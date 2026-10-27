@@ -1,0 +1,515 @@
+@import './styles/fonts.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ *
+ * Theme tokens
+ *
+ * One set of utilities, two deliberate editions. Text colours are chosen to
+ * clear 4.5:1 on their own background; `ink-faint` is decoration only and is
+ * never used for type.
+ * ------------------------------------------------------------------ */
+
+:root {
+  --paper: 244 239 230;
+  --paper-deep: 235 228 214;
+  --paper-raise: 250 247 240;
+  --ink: 22 20 18;
+  --ink-soft: 61 55 47;
+  --ink-mute: 106 98 86;
+  --ink-faint: 160 150 134;
+  --rule: 213 202 182;
+  --rule-strong: 184 169 144;
+  --accent: 200 40 18;
+  --accent-deep: 168 33 15;
+  --accent-wash: 247 223 214;
+  --accent-ink: 255 250 246;
+  --ochre: 150 102 22;
+  --olive: 88 96 52;
+  --grain-opacity: 0.05;
+  color-scheme: light;
+}
+
+.dark {
+  --paper: 20 18 16;
+  --paper-deep: 12 11 10;
+  --paper-raise: 30 27 24;
+  --ink: 241 234 223;
+  --ink-soft: 214 206 193;
+  --ink-mute: 176 167 152;
+  --ink-faint: 122 114 102;
+  --rule: 58 52 45;
+  --rule-strong: 96 87 76;
+  --accent: 244 88 58;
+  --accent-deep: 255 128 100;
+  --accent-wash: 66 30 22;
+  --accent-ink: 26 12 8;
+  --ochre: 210 162 74;
+  --olive: 168 178 116;
+  --grain-opacity: 0.055;
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------ *
+ * The Welcome screen
+ *
+ * One dark room, shown before the app has a name to file things under. It sits
+ * over a photograph, so it does not follow the light/dark edition the rest of
+ * the app switches between: the accent is pinned to the dark edition's
+ * vermilion, which stays readable on the picture, and the pale type is pinned
+ * so a light-theme owner sees the same first run as anyone else.
+ *
+ * Declared outside @layer on purpose: inside it, the theme blocks above would
+ * win on order alone.
+ * ------------------------------------------------------------------ */
+
+.welcome {
+  --cream: 244 239 230;
+  --accent: 244 88 58;
+  --accent-deep: 255 128 100;
+}
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+
+@layer base {
+  * {
+    @apply border-rule;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  html {
+    /* Windows ClearType: keep subpixel rendering ON (never `antialiased`),
+       and never rasterise text inside a transform. */
+    -webkit-font-smoothing: auto;
+    text-size-adjust: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--rule-strong)) transparent;
+  }
+
+  body {
+    @apply bg-paper font-text text-body text-ink;
+    font-synthesis-weight: none;
+    /* The app is sized to the viewport: no tab may ever produce a scrollbar. */
+    overflow: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display text-ink;
+    font-optical-sizing: auto;
+    font-variation-settings: 'SOFT' 0, 'WONK' 1;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: rgb(var(--accent) / 0.9);
+    color: rgb(var(--accent-ink));
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+    border-radius: 1px;
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  input,
+  textarea {
+    background: transparent;
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Thin, editorial scrollbars — used only by the Day dialog. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--rule-strong));
+    background-clip: content-box;
+    border: 3px solid transparent;
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--ink-mute));
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Windows "Animation effects: off" stops everything. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Components
+ * ------------------------------------------------------------------ */
+
+@layer components {
+  /* Paper grain: an inline SVG noise field, no network, no image asset. */
+  .grain::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    opacity: var(--grain-opacity);
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .dark .grain::after {
+    mix-blend-mode: screen;
+  }
+
+  /* One divider colour, used everywhere. */
+  .rule-b {
+    @apply border-b border-rule;
+  }
+
+  .rule-t {
+    @apply border-t border-rule;
+  }
+
+  /* Small uppercase mono labels — never sentences, hints or buttons. */
+  .label {
+    @apply font-mono text-label uppercase text-ink-mute;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .num {
+    @apply font-display;
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  .tab {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Buttons: exactly three styles.
+   *   .btn          secondary — a plain outline, filled in on hover
+   *   .btn-primary  the one accent action on a screen
+   *   .btn-text     a label with a sliding rule, for tertiary actions
+   * Sentence case, plain words, never tracked-out uppercase.
+   * ---------------------------------------------------------------- */
+
+  .btn {
+    @apply relative inline-flex select-none items-center justify-center gap-2 border border-ink bg-paper px-4 font-text text-small text-ink transition-colors duration-150;
+    min-height: 2.5rem; /* 40px hit target: touch and pen friendly */
+  }
+  .btn:hover:not(:disabled) {
+    @apply bg-paper-deep;
+  }
+  .btn:active:not(:disabled) {
+    @apply bg-rule;
+  }
+  .btn:disabled {
+    @apply cursor-not-allowed border-rule-strong text-ink-mute;
+  }
+
+  .btn-primary {
+    @apply border-accent bg-accent text-accent-ink;
+  }
+  /* A disabled primary must stay readable: the fill steps back to the wash,
+     never vermilion with washed-out ink on top of it. */
+  .btn-primary:disabled {
+    @apply border-rule-strong bg-accent-wash text-accent-deep;
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply bg-accent-deep;
+  }
+  .btn-primary:active:not(:disabled) {
+    @apply bg-accent-deep;
+  }
+
+  .btn-text {
+    @apply relative inline-flex select-none items-center gap-1.5 bg-transparent px-1 py-1 font-text text-small text-ink-soft transition-colors;
+    min-height: 2rem;
+  }
+  .btn-text:hover:not(:disabled) {
+    @apply text-ink;
+  }
+  .btn-text:disabled {
+    @apply cursor-not-allowed text-ink-mute;
+  }
+  .btn-text::after {
+    content: '';
+    position: absolute;
+    left: 0.25rem;
+    right: 0.25rem;
+    bottom: 0.1rem;
+    height: 1px;
+    background: rgb(var(--accent));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 150ms cubic-bezier(0.16, 0.84, 0.44, 1);
+  }
+  .btn-text:hover:not(:disabled)::after {
+    transform: scaleX(1);
+  }
+  .btn-text.no-rule::after {
+    display: none;
+  }
+
+  /* Text inputs styled as ruled paper. */
+  .field {
+    @apply w-full border-0 border-b border-rule-strong bg-transparent px-0 py-1.5 font-text text-body text-ink placeholder:text-ink-mute;
+    min-height: 2.5rem;
+  }
+  .field:focus {
+    outline: none;
+    border-bottom-color: rgb(var(--accent));
+    box-shadow: 0 1px 0 0 rgb(var(--accent));
+  }
+  .field:disabled {
+    @apply text-ink-mute;
+  }
+
+  /* Number fields in Settings keep a visible box so the clamp is obvious. */
+  .numfield {
+    @apply w-[4.75rem] border border-rule-strong bg-paper-raise px-2 py-0.5 font-mono text-small tabular-nums text-ink;
+    min-height: 2rem;
+  }
+  .numfield:focus {
+    outline: none;
+    border-color: rgb(var(--accent));
+  }
+
+  /* The same box for the one text field in Settings (the owner's name). */
+  .namefield {
+    @apply w-[9.5rem] border border-rule-strong bg-paper-raise px-2 py-0.5 font-text text-small text-ink;
+    min-height: 2rem;
+  }
+  .namefield:focus {
+    outline: none;
+    border-color: rgb(var(--accent));
+  }
+
+  /* The Welcome field: focus is a soft ring around the whole pill, not the
+     browser's outline — the accent border is already the resting state. */
+  .welcome-pill:focus-within {
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.25);
+  }
+
+  /* Full cream, held readable over the photograph by a shadow rather than a
+     plate, which would read as a second box under the field. The alpha is 1 on
+     purpose: at 90% the brightest wildflower behind the line measured 4.22:1,
+     under the 4.5:1 floor the rest of the app keeps. */
+  .welcome-note {
+    color: rgb(var(--cream));
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.9), 0 0 4px rgb(0 0 0 / 0.75), 0 0 14px rgb(0 0 0 / 0.55);
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 border border-rule-strong bg-paper px-2.5 font-text text-small text-ink-soft transition-colors;
+    min-height: 2rem;
+  }
+  .chip:hover:not(:disabled) {
+    @apply border-ink text-ink;
+  }
+  .chip-on {
+    @apply border-accent bg-accent-wash text-accent-deep;
+  }
+
+  /* Segmented control: Pomodoro|Custom, filters, ranges, theme. */
+  .seg {
+    @apply inline-flex select-none items-stretch border border-rule-strong;
+  }
+  .seg > button {
+    @apply border-0 bg-transparent px-3 py-1 font-text text-small text-ink-soft transition-colors;
+    min-height: 2rem;
+  }
+  .seg > button + button {
+    border-left: 1px solid rgb(var(--rule-strong));
+  }
+  .seg > button:hover:not(:disabled) {
+    @apply bg-paper-deep text-ink;
+  }
+  .seg > button[aria-pressed='true'] {
+    @apply bg-ink text-paper;
+  }
+  .seg > button:disabled {
+    @apply cursor-not-allowed text-ink-mute;
+  }
+
+  /* Cards: a bordered block, no shadow, no radius. Sized to fit two rows of
+     them on a 600px-tall window without scrolling. */
+  .card {
+    @apply flex min-h-0 flex-col overflow-hidden border border-rule bg-paper-raise;
+  }
+  .card-head {
+    @apply flex shrink-0 items-center justify-between gap-2 border-b border-rule px-3 py-1.5;
+  }
+  .card-body {
+    @apply min-h-0 flex-1 px-3 py-2;
+  }
+
+  /* Home's headline figures grow with the window height. A fixed size left a
+     tall card holding a small number at 1080p, with dead space all around it. */
+  .metric-fluid {
+    font-size: clamp(3rem, 8.5vh, 7.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.035em;
+  }
+
+  /* Column headings on Home: a label and a rule above the figure. */
+  .column-head {
+    @apply flex items-baseline justify-between gap-3 border-b border-ink pb-1.5;
+  }
+
+  /* Rows that gain a left rule and shift slightly on hover. */
+  .entry {
+    @apply relative transition-colors duration-150;
+  }
+  .entry::before {
+    content: '';
+    position: absolute;
+    left: -0.6rem;
+    top: 0.05rem;
+    bottom: 0.05rem;
+    width: 2px;
+    background: rgb(var(--accent));
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 150ms cubic-bezier(0.16, 0.84, 0.44, 1);
+  }
+  .entry:hover::before,
+  .entry:focus-within::before {
+    transform: scaleY(1);
+  }
+  .entry:hover {
+    transform: translateX(2px);
+  }
+
+  /* Heatmap cells: five intensity levels of the accent, one per goal band. */
+  .heat-cell {
+    @apply block aspect-square w-full border border-rule;
+    background: rgb(var(--paper-deep));
+  }
+  .heat-cell[data-level='1'] {
+    background: rgb(var(--accent) / 0.28);
+  }
+  .heat-cell[data-level='2'] {
+    background: rgb(var(--accent) / 0.48);
+  }
+  .heat-cell[data-level='3'] {
+    background: rgb(var(--accent) / 0.72);
+  }
+  .heat-cell[data-level='4'] {
+    background: rgb(var(--accent) / 1);
+  }
+  .heat-cell[data-today='true'] {
+    outline: 1.5px solid rgb(var(--ink));
+    outline-offset: 1px;
+  }
+
+  /* The one dashed rule used by charts: the daily goal. */
+  .dash-accent {
+    background-image: repeating-linear-gradient(
+      to right,
+      rgb(var(--accent)) 0 6px,
+      transparent 6px 12px
+    );
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Windows accessibility: High Contrast / forced colours
+ * ------------------------------------------------------------------ */
+
+@media (forced-colors: active) {
+  :root,
+  .dark {
+    --grain-opacity: 0;
+  }
+  .grain::after {
+    display: none;
+  }
+  .btn,
+  .chip,
+  .card,
+  .seg {
+    border: 1px solid CanvasText;
+    box-shadow: none;
+    forced-color-adjust: none;
+    background: Canvas;
+    color: CanvasText;
+  }
+  .heat-cell {
+    border: 1px solid CanvasText;
+    forced-color-adjust: none;
+    background: Canvas;
+  }
+  .heat-cell[data-level='2'],
+  .heat-cell[data-level='3'],
+  .heat-cell[data-level='4'] {
+    background: Highlight;
+    opacity: 0.9;
+  }
+  ::selection {
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Utilities
+ * ------------------------------------------------------------------ */
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.drag {
+  -webkit-app-region: drag;
+}

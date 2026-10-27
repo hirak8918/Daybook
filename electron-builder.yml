@@ -1,0 +1,78 @@
+# electron-builder configuration for Daybook (Windows x64).
+#
+#   npm run dist            → NSIS installer  (release/Daybook-Setup-1.2.0.exe)
+#   npm run dist:portable   → single-file portable exe
+#   npm run dist:all        → both
+#
+# Per-user install by default (`perMachine: false`): no administrator rights,
+# a choice of directory, desktop + Start Menu shortcuts and a clean uninstaller.
+
+appId: com.daybook.app
+productName: Daybook
+copyright: Copyright © 2026 Daybook Press
+
+directories:
+  output: release
+  buildResources: build
+
+# Only the compiled output ships: the renderer bundle and the main/preload
+# bundle. There are no runtime dependencies to bundle (v1.1 removed the inert
+# auto-update hook, and has no network code at all).
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+  - '!**/*.map'
+  - '!**/{.eslintrc,.editorconfig,.gitignore}'
+
+asar: true
+# Nothing here is native, so skip the rebuild pass entirely (it only slows the
+# build down and can fail behind a locked down npm registry).
+npmRebuild: false
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+
+# No publish provider: releases are put on disk. Auto-update is deliberately
+# absent in v1.1 — re-add electron-updater when there is a signed release and a
+# real feed to point it at.
+publish: null
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  # A single-point, upper-case-free executable name keeps Windows happy and
+  # makes the AppUserModelID grouping predictable.
+  executableName: Daybook
+  # Windows 10 1809 and 11 (x64) — the title bar overlay and toasts need 1809+.
+  requestedExecutionLevel: asInvoker
+  legalTrademarks: Daybook
+
+nsis:
+  # A real installer wizard (not a one-click stub) so the user can choose the
+  # directory and sees what is happening.
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Daybook
+  menuCategory: false
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+  artifactName: Daybook-Setup-${version}.${ext}
+  uninstallDisplayName: Daybook ${version}
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+
+portable:
+  artifactName: Daybook-Portable-${version}.${ext}
+  # Keep the portable build self-contained; its data still lives in %APPDATA%.
+  requestExecutionLevel: user

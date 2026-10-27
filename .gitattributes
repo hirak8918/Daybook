@@ -1,0 +1,18 @@
+# Normalise line endings: the app builds and runs on Windows, but the tooling
+# is plain Node and every text file is LF on disk.
+* text=auto eol=lf
+
+# Batch files must stay CRLF for cmd.exe.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets — never diff, never convert.
+*.png binary
+*.webp binary
+*.ico binary
+*.exe binary
+*.woff2 binary
+
+# Generated lockfile: keep it out of diff review and language stats.
+package-lock.json linguist-generated=true
