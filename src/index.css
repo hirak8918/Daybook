@@ -53,22 +53,35 @@
 }
 
 /* ------------------------------------------------------------------ *
- * The Welcome screen
+ * The Welcome page
  *
- * One dark room, shown before the app has a name to file things under. It sits
- * over a photograph, so it does not follow the light/dark edition the rest of
- * the app switches between: the accent is pinned to the dark edition's
- * vermilion, which stays readable on the picture, and the pale type is pinned
- * so a light-theme owner sees the same first run as anyone else.
+ * The first page is always printed on cream paper, whatever edition the app
+ * behind it will open in: it is a title page, not a theme preview. Every token
+ * the page uses is pinned here so a dark-theme owner and a light-theme owner
+ * get the same first run — and so the page can be measured without depending
+ * on the operating system's appearance.
  *
  * Declared outside @layer on purpose: inside it, the theme blocks above would
  * win on order alone.
  * ------------------------------------------------------------------ */
 
 .welcome {
-  --cream: 244 239 230;
-  --accent: 244 88 58;
-  --accent-deep: 255 128 100;
+  --paper: 244 239 230;
+  --paper-deep: 235 228 214;
+  --paper-raise: 250 247 240;
+  --ink: 22 20 18;
+  --ink-soft: 61 55 47;
+  --ink-mute: 106 98 86;
+  --ink-faint: 160 150 134;
+  --rule: 213 202 182;
+  --rule-strong: 184 169 144;
+  --accent: 200 40 18;
+  --accent-deep: 168 33 15;
+  --accent-wash: 247 223 214;
+  --accent-ink: 255 250 246;
+  --ochre: 150 102 22;
+  --olive: 88 96 52;
+  --grain-opacity: 0.05;
 }
 
 /* ------------------------------------------------------------------ *
@@ -259,6 +272,7 @@
   }
   .btn:active:not(:disabled) {
     @apply bg-rule;
+    transform: translateY(1px);
   }
   .btn:disabled {
     @apply cursor-not-allowed border-rule-strong text-ink-mute;
@@ -342,19 +356,14 @@
     border-color: rgb(var(--accent));
   }
 
-  /* The Welcome field: focus is a soft ring around the whole pill, not the
-     browser's outline — the accent border is already the resting state. */
-  .welcome-pill:focus-within {
-    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.25);
+  /* The Welcome field's rule is ink at rest and accent on focus; this keeps the
+     underline from flickering a pixel wider when the colour changes. */
+  .welcome-field {
+    box-shadow: 0 0 0 0 rgb(var(--accent) / 0);
+    transition: border-color 180ms ease, box-shadow 180ms ease;
   }
-
-  /* Full cream, held readable over the photograph by a shadow rather than a
-     plate, which would read as a second box under the field. The alpha is 1 on
-     purpose: at 90% the brightest wildflower behind the line measured 4.22:1,
-     under the 4.5:1 floor the rest of the app keeps. */
-  .welcome-note {
-    color: rgb(var(--cream));
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.9), 0 0 4px rgb(0 0 0 / 0.75), 0 0 14px rgb(0 0 0 / 0.55);
+  .welcome-field:focus-within {
+    box-shadow: 0 1px 0 0 rgb(var(--accent) / 0.35);
   }
 
   .chip {
@@ -393,6 +402,10 @@
      them on a 600px-tall window without scrolling. */
   .card {
     @apply flex min-h-0 flex-col overflow-hidden border border-rule bg-paper-raise;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5);
+  }
+  .dark .card {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
   }
   .card-head {
     @apply flex shrink-0 items-center justify-between gap-2 border-b border-rule px-3 py-1.5;
@@ -435,7 +448,7 @@
     transform: scaleY(1);
   }
   .entry:hover {
-    transform: translateX(2px);
+    transform: translateX(3px);
   }
 
   /* Heatmap cells: five intensity levels of the accent, one per goal band. */

@@ -405,98 +405,80 @@ try {
   console.log(`\u001b[2mrenderer: ${JSON.stringify(liveness)}\u001b[0m`);
 
   /* ------------------------------------------------------- welcome */
-  // The reference canvas from the brief. Every dimension below is measured at
-  // 1536×1024, then again at the 1000×600 minimum where the heading and the
-  // field are closest together.
+  // The title page: cream paper, a hairline grid, one outlined edition number
+  // and a seal that turns. Measured at the reference canvas (1536×1024) and
+  // again at the 1000×600 minimum, where everything is closest together.
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1536, height: 1024, deviceScaleFactor: 1, mobile: false });
   await sleep(500);
 
   const welcome = await page(`(() => {
     const layer = document.querySelector('#daybook-welcome');
-    // Every field is present even when the screen is not, so a missing screen
-    // reports itself as a list of failures rather than crashing the run.
+    const noBox = { x: -999, y: -999, w: 0, h: 0, right: -999, cy: -999, cx: -999 };
     if (!layer) return {
       present: false, viewport: [window.innerWidth, window.innerHeight], header: true, tabs: true,
       headingText: null, headingColors: [], headingSize: 0, headingWeight: '0', headingFont: '',
       headingWrap: '', headingAlign: '', headingLines: 0, headingEdges: false,
-      headingBox: { w: 0, h: 0, cx: -999, cy: -999, right: -999 },
-      pillBox: { w: 0, h: 0, cx: -999, cy: -999, right: -999 },
-      pillRadius: 0, pillBorderWidth: 0, pillBorderColor: '', pillFill: '', pillBlur: 'none', dpr: 1,
+      headingBox: noBox, fieldBox: noBox,
+      fieldBorder: '', fieldBorderWidth: 0, fieldRadius: 0,
       inputFont: '', inputSize: 0, inputPad: 0, inputCaret: '', inputPlaceholder: null, inputLabel: null,
-      focused: false, buttonBox: { w: 0, h: 0, cx: -999, cy: -999, right: -999 }, buttonFill: '',
-      buttonRadius: 0, arrow: null, image: null, images: [], strip: null, drags: false, overCaption: null,
-      scrolls: 0, docScroll: [0, 0], scrollables: 0,
+      focused: false, buttonBox: noBox, buttonFill: '', buttonRadius: 0, arrow: null,
+      seal: null, images: 0, strip: null, drags: false, overCaption: null,
+      scrolls: 0, docScroll: [0, 0], scrollables: 0, background: '',
     };
     const round = (n) => Math.round(n * 100) / 100;
     const style = (el) => getComputedStyle(el);
     const box = (el) => {
       const r = el.getBoundingClientRect();
-      return { x: round(r.x), y: round(r.y), w: round(r.width), h: round(r.height), right: round(r.right), cx: round(r.x + r.width / 2), cy: round(r.y + r.height / 2) };
+      return { x: round(r.x), y: round(r.y), w: round(r.width), h: round(r.height), right: round(r.right), cy: round(r.y + r.height / 2), cx: round(r.x + r.width / 2) };
     };
     const heading = document.getElementById('welcome-heading');
+    const field = layer.querySelector('.welcome-field');
     const input = layer.querySelector('input[aria-label="Your name"]');
     const button = layer.querySelector('button[aria-label="Continue"]');
-    const pill = layer.querySelector('.welcome-pill');
-    const image = layer.querySelector('img');
+    const seal = layer.querySelector('.welcome-seal');
     const strip = layer.querySelector('.drag');
     const svg = button ? button.querySelector('svg') : null;
-    const headingStyle = heading ? style(heading) : null;
+    const hs = heading ? style(heading) : null;
     return {
       present: true,
       viewport: [window.innerWidth, window.innerHeight],
       header: Boolean(document.querySelector('header')),
       tabs: Boolean(document.querySelector('nav[aria-label="Sections"]')),
       headingText: heading ? heading.textContent.replace(/\\s+/g, ' ').trim() : null,
-      headingColors: [...heading.querySelectorAll('span')].map((s) => style(s).color),
-      headingBox: box(heading),
-      headingSize: round(parseFloat(headingStyle.fontSize)),
-      headingWeight: headingStyle.fontWeight,
-      headingFont: headingStyle.fontFamily,
-      headingWrap: headingStyle.textWrap,
-      headingAlign: headingStyle.textAlign,
-      headingLines: Math.round(heading.getBoundingClientRect().height / parseFloat(headingStyle.lineHeight)),
-      headingEdges:
-        heading.getBoundingClientRect().left > 0 && heading.getBoundingClientRect().right < window.innerWidth,
-      pillBox: box(pill),
-      pillRadius: round(parseFloat(style(pill).borderTopLeftRadius)),
-      pillBorderWidth: round(parseFloat(style(pill).borderTopWidth)),
-      pillBorderColor: style(pill).borderTopColor,
-      pillFill: style(pill).backgroundColor,
-      pillBlur: style(pill).backdropFilter,
-      dpr: window.devicePixelRatio,
-      inputFont: style(input).fontFamily,
-      inputSize: round(parseFloat(style(input).fontSize)),
-      inputPad: round(parseFloat(style(input).paddingLeft)),
-      inputCaret: style(input).caretColor,
-      inputPlaceholder: input.getAttribute('placeholder'),
-      inputLabel: input.getAttribute('aria-label'),
+      headingColors: heading ? [...heading.querySelectorAll('span')].map((s) => style(s).color) : [],
+      headingBox: heading ? box(heading) : noBox,
+      headingSize: hs ? round(parseFloat(hs.fontSize)) : 0,
+      headingWeight: hs ? hs.fontWeight : '0',
+      headingFont: hs ? hs.fontFamily : '',
+      headingWrap: hs ? hs.textWrap : '',
+      headingAlign: hs ? hs.textAlign : '',
+      headingLines: heading ? Math.round(heading.getBoundingClientRect().height / parseFloat(hs.lineHeight)) : 0,
+      headingEdges: heading ? heading.getBoundingClientRect().left > 0 && heading.getBoundingClientRect().right < window.innerWidth : false,
+      fieldBox: field ? box(field) : noBox,
+      fieldBorder: field ? style(field).borderBottomColor : '',
+      fieldBorderWidth: field ? round(parseFloat(style(field).borderBottomWidth)) : 0,
+      fieldRadius: field ? round(parseFloat(style(field).borderBottomLeftRadius)) : 0,
+      inputFont: input ? style(input).fontFamily : '',
+      inputSize: input ? round(parseFloat(style(input).fontSize)) : 0,
+      inputPad: input ? round(parseFloat(style(input).paddingLeft)) : 0,
+      inputCaret: input ? style(input).caretColor : '',
+      inputPlaceholder: input ? input.getAttribute('placeholder') : null,
+      inputLabel: input ? input.getAttribute('aria-label') : null,
       focused: document.activeElement === input,
-      buttonBox: box(button),
-      buttonFill: style(button).backgroundColor,
-      buttonRadius: round(parseFloat(style(button).borderTopLeftRadius)),
-      arrow: svg
-        ? { size: round(svg.getBoundingClientRect().width), stroke: svg.getAttribute('stroke-width') }
-        : null,
-      image: image
-        ? {
-            src: String(image.currentSrc || image.src).split('/').pop(),
-            fit: style(image).objectFit,
-            position: style(image).objectPosition,
-            loaded: image.naturalWidth > 0,
-          }
-        : null,
-      // The screen cross-fades through three plates; all three are in the DOM
-      // with opacity on the active one, so the set is what is checked.
-      images: [...layer.querySelectorAll('img')].map((img) => ({
-        src: String(img.currentSrc || img.src).split('/').pop(),
-        fit: style(img).objectFit,
-        position: style(img).objectPosition,
-        loaded: img.naturalWidth > 0,
-      })),
+      buttonBox: button ? box(button) : noBox,
+      buttonFill: button ? style(button).backgroundColor : '',
+      buttonRadius: button ? round(parseFloat(style(button).borderTopLeftRadius)) : 0,
+      arrow: svg ? { size: round(svg.getBoundingClientRect().width), stroke: svg.getAttribute('stroke-width') } : null,
+      seal: seal ? {
+        w: round(seal.getBoundingClientRect().width),
+        textPath: Boolean(seal.querySelector('textPath')),
+        transform: style(seal).transform,
+      } : null,
+      images: layer.querySelectorAll('img').length,
       strip: strip ? { h: round(strip.getBoundingClientRect().height), right: round(strip.getBoundingClientRect().right) } : null,
       drags: (() => {
         const el = document.elementFromPoint(300, 24);
-        return Boolean(el && (el.closest('.drag') || String(el.className || '').includes('drag')));
+        return Boolean(el && el.closest('.drag'));
       })(),
       overCaption: (() => {
         const el = document.elementFromPoint(window.innerWidth - 70, 24);
@@ -509,91 +491,84 @@ try {
         const can = /(auto|scroll)/.test(s.overflowY) || /(auto|scroll)/.test(s.overflowX);
         return can && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1);
       }).length,
+      background: style(layer).backgroundColor,
     };
   })()`);
 
   check('a fresh install opens the Welcome screen', welcome.present === true, welcome);
-  check('the header and the four tabs are hidden while it is up', welcome.present && !welcome.header && !welcome.tabs, welcome);
+  check('the app header and the four tabs are hidden while it is up', welcome.present && !welcome.header && !welcome.tabs, welcome);
   check(
-    'the heading is the two-tone line from the mockup',
+    'the title page is the two-tone question',
     welcome.headingText === 'What shall we call you, Knight?' && welcome.headingColors.length === 2,
     { text: welcome.headingText, colors: welcome.headingColors },
   );
   check(
-    'cream first, then the word “Knight?” in the accent',
-    welcome.headingColors[0] === 'rgb(244, 239, 230)' && welcome.headingColors[1] === 'rgb(244, 88, 58)',
+    'ink first, then the word “Knight?” in the accent',
+    welcome.headingColors[0] === 'rgb(22, 20, 18)' && welcome.headingColors[1] === 'rgb(200, 40, 18)',
     welcome.headingColors,
   );
   check(
-    'the heading is Fraunces at regular weight, 30–52px',
-    /Fraunces/.test(welcome.headingFont) && welcome.headingWeight === '400' && welcome.headingSize >= 30 && welcome.headingSize <= 52,
+    'the heading is Fraunces at regular weight, 30–70px',
+    /Fraunces/.test(welcome.headingFont) && welcome.headingWeight === '400' && welcome.headingSize >= 30 && welcome.headingSize <= 70,
     { font: welcome.headingFont, weight: welcome.headingWeight, size: welcome.headingSize },
   );
   check(
-    'the heading is left-aligned in the shaded column, with room to balance',
+    'the heading is left-aligned, balanced and clear of the middle',
     (welcome.headingAlign === 'left' || welcome.headingAlign === 'start') &&
       welcome.headingWrap === 'balance' && welcome.headingEdges &&
       welcome.headingBox.x > 20 && welcome.headingBox.right < welcome.viewport[0] * 0.7,
     { align: welcome.headingAlign, wrap: welcome.headingWrap, box: welcome.headingBox, viewport: welcome.viewport },
   );
   check(
-    'it sits in the upper half, leaving the photograph the right of the frame',
-    welcome.headingBox.cy > welcome.viewport[1] * 0.32 && welcome.headingBox.cy < welcome.viewport[1] * 0.55 &&
+    'it sits in the upper half of the page',
+    welcome.headingBox.cy > welcome.viewport[1] * 0.3 && welcome.headingBox.cy < welcome.viewport[1] * 0.57 &&
       welcome.headingBox.cx < welcome.viewport[0] * 0.45,
     welcome.headingBox,
   );
   check(
-    'the field starts on the heading’s left edge, below it',
-    Math.abs(welcome.pillBox.x - welcome.headingBox.x) <= 2 &&
-      welcome.pillBox.y > welcome.headingBox.y + welcome.headingBox.h,
-    { pill: welcome.pillBox, heading: welcome.headingBox },
+    'the ruled field starts on the heading’s left edge, below it',
+    Math.abs(welcome.fieldBox.x - welcome.headingBox.x) <= 2 &&
+      welcome.fieldBox.y > welcome.headingBox.y + welcome.headingBox.h,
+    { field: welcome.fieldBox, heading: welcome.headingBox },
   );
   check(
-    'the field is a 64–70px pill, 340–560px wide, 16–18px corners',
-    welcome.pillBox.h >= 64 && welcome.pillBox.h <= 70 &&
-      welcome.pillBox.w >= 340 && welcome.pillBox.w <= 560 &&
-      welcome.pillRadius >= 16 && welcome.pillRadius <= 18,
-    welcome.pillBox,
+    'the field is a 50–70px rule, 340–620px wide, square-cornered',
+    welcome.fieldBox.h >= 50 && welcome.fieldBox.h <= 70 &&
+      welcome.fieldBox.w >= 340 && welcome.fieldBox.w <= 620 &&
+      welcome.fieldRadius === 0,
+    welcome.fieldBox,
   );
-  // Painted widths cannot be asserted on a scaled display: Chromium snaps every
-  // border to whole device pixels and reports that used value, so the authored
-  // 1.5px arrives here as 0.8px (one device pixel) at 125% scaling. The rule
-  // says what was asked for; the painted box says it made it to the screen.
-  const borderRule = await page(`(() => {
-    const pill = document.querySelector('.welcome-pill');
-    const authored = pill ? [...pill.classList].filter((c) => c.indexOf('1.5px') > -1) : [];
+  // Painted widths are device-pixel snapped (1.5px arrives as 0.8px at 125%
+  // scaling), so the painted box is checked only for being visible and the
+  // authored 1.5px is read back from the stylesheet.
+  const ruleWidths = await page(`(() => {
     const widths = [];
     for (const sheet of document.styleSheets) {
       let rules = [];
       try { rules = [...sheet.cssRules]; } catch (e) { continue; }
       for (const entry of rules) {
-        const width = entry.style && entry.style.borderWidth;
-        if (width && widths.indexOf(width) === -1) widths.push(width);
+        if (!entry.style) continue;
+        for (const prop of ['borderWidth', 'borderBottomWidth']) {
+          const width = entry.style[prop];
+          if (width && widths.indexOf(width) === -1) widths.push(width);
+        }
       }
     }
-    return { authored, widths };
+    return widths;
   })()`);
   check(
-    'the field is near-black on a 1.5px accent border, with a backdrop blur',
-    welcome.pillFill === 'rgba(10, 8, 7, 0.88)' &&
-      welcome.pillBorderColor === 'rgb(244, 88, 58)' &&
-      welcome.pillBorderWidth > 0.5 &&
-      welcome.pillBlur !== 'none' &&
-      borderRule.authored.length === 1 &&
-      borderRule.widths.indexOf('1.5px') > -1,
-    {
-      fill: welcome.pillFill,
-      painted: `${welcome.pillBorderWidth}px ${welcome.pillBorderColor}`,
-      blur: welcome.pillBlur,
-      authored: borderRule,
-    },
+    'the rule is ink at rest, 1.5px authored',
+    welcome.fieldBorder === 'rgb(22, 20, 18)' &&
+      welcome.fieldBorderWidth > 0.5 &&
+      ruleWidths.indexOf('1.5px') > -1,
+    { painted: welcome.fieldBorderWidth, color: welcome.fieldBorder, widths: ruleWidths },
   );
   check(
-    'the field takes 20px text on a 24px inset',
-    welcome.inputSize === 20 && welcome.inputPad === 24 && /Geist/.test(welcome.inputFont),
+    'the name takes 21–30px Geist, flush left',
+    welcome.inputSize >= 21 && welcome.inputSize <= 30 && welcome.inputPad === 0 && /Geist/.test(welcome.inputFont),
     { size: welcome.inputSize, pad: welcome.inputPad, font: welcome.inputFont },
   );
-  check('the caret is the accent colour', welcome.inputCaret === 'rgb(244, 88, 58)', welcome.inputCaret);
+  check('the caret is the accent colour', welcome.inputCaret === 'rgb(200, 40, 18)', welcome.inputCaret);
   check(
     'the field is labelled and deliberately empty',
     welcome.inputLabel === 'Your name' && welcome.inputPlaceholder === null,
@@ -601,25 +576,24 @@ try {
   );
   check('the caret is already in the field', welcome.focused === true);
   check(
-    'the arrow is a 48px circle inside the right end of the field',
-    welcome.buttonBox.w === 48 && welcome.buttonBox.h === 48 &&
-      Math.abs(welcome.buttonBox.cy - welcome.pillBox.cy) <= 1.5 &&
-      welcome.pillBox.right - welcome.buttonBox.right >= 9 && welcome.pillBox.right - welcome.buttonBox.right <= 12 &&
-      welcome.buttonFill === 'rgb(244, 88, 58)' && welcome.buttonRadius >= 23,
-    { button: welcome.buttonBox, pill: welcome.pillBox, fill: welcome.buttonFill, radius: welcome.buttonRadius },
+    'the action is a 44px accent block at the end of the rule',
+    welcome.buttonBox.h === 44 && welcome.buttonFill === 'rgb(200, 40, 18)' &&
+      welcome.buttonRadius === 0 &&
+      welcome.fieldBox.right - welcome.buttonBox.right >= 0 && welcome.fieldBox.right - welcome.buttonBox.right <= 4 &&
+      Math.abs(welcome.buttonBox.cy - welcome.fieldBox.cy) < 20,
+    { button: welcome.buttonBox, field: welcome.fieldBox, fill: welcome.buttonFill },
   );
   check(
-    'the arrow is an inline 22px glyph with a 2px stroke',
-    welcome.arrow !== null && Math.round(welcome.arrow.size) === 22 && welcome.arrow.stroke === '2',
+    'the arrow is an inline 17px glyph with a 2px stroke',
+    welcome.arrow !== null && Math.round(welcome.arrow.size) === 17 && welcome.arrow.stroke === '2',
     welcome.arrow,
   );
   check(
-    'three bundled WebP plates, cover, held at 50% 42%',
-    welcome.images.length === 3 &&
-      welcome.images.every((img) => /\.webp$/.test(img.src) && img.fit === 'cover' && img.position === '50% 42%') &&
-      welcome.images[0].loaded,
-    welcome.images,
+    'the page is type and one seal — no photograph is loaded',
+    welcome.images === 0 && welcome.seal !== null && welcome.seal.textPath === true && welcome.seal.w >= 190,
+    welcome.seal,
   );
+  check('the first page is cream paper, not a pinned dark plate', welcome.background === 'rgb(244, 239, 230)', welcome.background);
   check(
     'the Welcome screen never scrolls',
     welcome.scrolls <= 1 && welcome.docScroll[0] <= 1 && welcome.docScroll[1] <= 1 && welcome.scrollables === 0,
@@ -631,9 +605,27 @@ try {
     welcome.overCaption === false && welcome.strip.right <= welcome.viewport[0] - 130,
     { overCaption: welcome.overCaption, strip: welcome.strip, viewport: welcome.viewport },
   );
-  console.log(`\u001b[2mwelcome: heading ${welcome.headingBox.w}×${welcome.headingBox.h}, field ${welcome.pillBox.w}×${welcome.pillBox.h}\u001b[0m`);
+  console.log(
+    `\u001b[2mwelcome: heading ${welcome.headingBox.w}×${welcome.headingBox.h}, field ${welcome.fieldBox.w}×${welcome.fieldBox.h}, seal ${welcome.seal?.w ?? 0}\u001b[0m`,
+  );
 
-  // Captured here, while the screen is still up and still empty — this is the
+  // The seal is the page's continuous motion. Sample the computed transform
+  // twice, well apart, and check that it actually turned.
+  const sealMotion = await page(`(async () => {
+    const seal = document.querySelector('.welcome-seal');
+    if (!seal) return { first: null, second: null, reduced: false };
+    const first = getComputedStyle(seal).transform;
+    await new Promise((r) => setTimeout(r, 420));
+    const second = getComputedStyle(seal).transform;
+    return { first, second, reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches };
+  })()`);
+  check(
+    'the seal turns while the page is up — still under reduced motion',
+    sealMotion.reduced ? sealMotion.first === sealMotion.second : sealMotion.first !== sealMotion.second,
+    sealMotion,
+  );
+
+  // Captured here, while the page is still up and still empty — this is the
   // first thing a new owner ever sees.
   if (SHOTS) {
     const dir = path.resolve(root, SHOTS);
@@ -646,15 +638,16 @@ try {
   /* --------------------------------------------------- the refusals */
   const empty = await page(`(async () => {
     const layer = document.querySelector('#daybook-welcome');
-    const input = layer.querySelector('input[aria-label="Your name"]');
-    const pill = layer.querySelector('.welcome-pill').parentElement;
     if (!layer) return { noteText: null, noteSize: 0, focused: false, invalid: null, described: null, moved: 0, reduced: false };
+    const input = layer.querySelector('input[aria-label="Your name"]');
+    const field = layer.querySelector('.welcome-field');
+    const wrapper = field ? field.parentElement : null;
     document.querySelector('button[aria-label="Continue"]').click();
-    // Watch the field for the shake while the helper line appears.
+    // Watch the field wrapper for the shake while the helper line appears.
     const moved = [];
     const until = Date.now() + 800;
     while (Date.now() < until) {
-      const matrix = /matrix\\(([^)]+)\\)/.exec(getComputedStyle(pill).transform);
+      const matrix = /matrix\\(([^)]+)\\)/.exec(wrapper ? getComputedStyle(wrapper).transform : '');
       if (matrix) {
         const x = Math.round(parseFloat(matrix[1].split(',')[4]) * 10) / 10;
         if (Math.abs(x) > 0.5 && moved.indexOf(x) === -1) moved.push(x);
@@ -681,71 +674,20 @@ try {
     { reduced: empty.reduced, positions: empty.moved },
   );
 
-  // The helper line sits over the photograph, so its contrast is measured
-  // against the photo's own pixels (the vignette only darkens them, which makes
-  // this the conservative reading).
+  // The helper sits on plain paper now, so its contrast is a two-colour sum
+  // rather than a sample of a photograph.
   const contrast = await page(`(() => {
-    try {
-      const note = document.getElementById('welcome-error');
-      const image = document.querySelector('#daybook-welcome img');
-      if (!note || !image || !image.naturalWidth) return { error: 'no note or no image' };
-      const box = note.getBoundingClientRect();
-      const W = window.innerWidth, H = window.innerHeight;
-      const iw = image.naturalWidth, ih = image.naturalHeight;
-      const scale = Math.max(W / iw, H / ih);
-      const ox = (W - iw * scale) * 0.5, oy = (H - ih * scale) * 0.4;
-      const pad = 6;
-      const sx = Math.max(0, (box.left - pad - ox) / scale);
-      const sy = Math.max(0, (box.top - pad - oy) / scale);
-      const sw = Math.max(1, Math.min(iw - sx, (box.width + pad * 2) / scale));
-      const sh = Math.max(1, Math.min(ih - sy, (box.height + pad * 2) / scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(sw);
-      canvas.height = Math.round(sh);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      var brightest = [0, 0, 0], best = -1;
-      for (var i = 0; i < data.length; i += 4) {
-        var L = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-        if (L > best) { best = L; brightest = [data[i], data[i + 1], data[i + 2]]; }
-      }
-      // The photograph is not what the line sits on: a 16% scrim covers every
-      // plate, and the left column carries a further horizontal shade. Model
-      // both — same stops as WelcomeScreen.tsx — rather than measuring the raw
-      // photo and reporting a ratio nobody ever sees.
-      var noteX = (box.left + box.width / 2) / W;
-      var stops = [[0, 0.94], [0.26, 0.86], [0.5, 0.46], [0.72, 0.06], [1, 0]];
-      var shade = 0;
-      for (var s = 1; s < stops.length; s++) {
-        if (noteX <= stops[s][0]) {
-          var t = (noteX - stops[s - 1][0]) / (stops[s][0] - stops[s - 1][0]);
-          shade = stops[s - 1][1] + t * (stops[s][1] - stops[s - 1][1]);
-          break;
-        }
-      }
-      var backdropAlpha = 1 - (1 - 0.16) * (1 - shade);
-      brightest = brightest.map(function (v) { return v * (1 - backdropAlpha); });
-      var lin = function (v) { var c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-      var rel = function (rgb) { return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]); };
-      var parts = String(getComputedStyle(note).color).replace(/[^0-9.]/g, ' ').trim().split(/ +/).map(Number);
-      var alpha = parts.length > 3 ? parts[3] : 1;
-      var over = [0, 1, 2].map(function (k) { return parts[k] * alpha + brightest[k] * (1 - alpha); });
-      var a = rel(over), b = rel(brightest);
-      return {
-        ratio: Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100,
-        behind: brightest,
-        text: over.map(Math.round),
-      };
-    } catch (err) {
-      return { error: String(err.message) };
-    }
+    const note = document.getElementById('welcome-error');
+    if (!note) return { error: 'no note' };
+    const parse = (value) => String(value).replace(/[^0-9.]/g, ' ').trim().split(/ +/).map(Number).slice(0, 3);
+    const lin = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const rel = (rgb) => 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+    const fg = parse(getComputedStyle(note).color);
+    const bg = parse(getComputedStyle(document.querySelector('#daybook-welcome')).backgroundColor);
+    const a = rel(fg), b = rel(bg);
+    return { ratio: Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100, fg, bg };
   })()`);
-  check(
-    'the helper line clears 4.5:1 over the photograph',
-    typeof contrast.ratio === 'number' && contrast.ratio >= 4.5,
-    contrast,
-  );
+  check('the helper line clears 4.5:1 on the paper', typeof contrast.ratio === 'number' && contrast.ratio >= 4.5, contrast);
 
   const letters = await page(`(async () => {
     const input = document.querySelector('input[aria-label="Your name"]');
@@ -772,18 +714,18 @@ try {
   await sleep(400);
   const compact = await page(`(() => {
     const heading = document.getElementById('welcome-heading');
-    const pill = document.querySelector('.welcome-pill');
-    if (!heading || !pill) return { lines: 0, edges: false, gap: -1, inside: false, scrolls: 0, size: 0, width: 0 };
+    const field = document.querySelector('.welcome-field');
+    if (!heading || !field) return { lines: 0, edges: false, gap: -1, inside: false, scrolls: 0, size: 0, width: 0 };
     const h = heading.getBoundingClientRect();
-    const p = pill.getBoundingClientRect();
+    const f = field.getBoundingClientRect();
     return {
       lines: Math.round(h.height / parseFloat(getComputedStyle(heading).lineHeight)),
       edges: h.left > 0 && h.right < window.innerWidth,
-      gap: Math.round(p.top - h.bottom),
-      inside: p.bottom < window.innerHeight && p.top > 0 && p.right < window.innerWidth && p.left > 0,
+      gap: Math.round(f.top - h.bottom),
+      inside: f.bottom < window.innerHeight && f.top > 0 && f.right < window.innerWidth && f.left > 0,
       scrolls: document.documentElement.scrollHeight - window.innerHeight,
       size: Math.round(parseFloat(getComputedStyle(heading).fontSize)),
-      width: Math.round(p.width),
+      width: Math.round(f.width),
     };
   })()`);
   check(
@@ -1055,6 +997,7 @@ try {
       roundDots: document.querySelectorAll('main [aria-hidden="true"] span.h-2').length,
       editLink: /—\\s*Edit/.test(document.body.innerText),
       ring: Boolean(document.querySelector('svg[aria-label*="remaining"]')),
+      ticks: document.querySelectorAll('svg[aria-label*="remaining"] line').length,
       footer: /Today .* · \\d+ session/.test(document.body.innerText),
       manual: document.body.innerText.includes('Add a session manually'),
       tags: document.body.innerText.includes('Working on:'),
@@ -1063,6 +1006,7 @@ try {
   check('Timer offers Pomodoro and Custom', timerIdle.seg.join(',') === 'Pomodoro,Custom', timerIdle.seg);
   check('Timer leads with Start', timerIdle.primary === 'Start', timerIdle.primary);
   check('the ring reports its remaining time to assistive tech', timerIdle.ring);
+  check('the dial draws a full minute rim of sixty ticks', timerIdle.ticks === 60, timerIdle.ticks);
   check('Pomodoro shows its round dots', timerIdle.roundDots === 4, timerIdle.roundDots);
   check('the lengths link to Settings', timerIdle.editLink);
   check('the tag chips are on the timer screen', timerIdle.tags);
@@ -1583,6 +1527,9 @@ try {
       var nodes = document.querySelectorAll(${JSON.stringify(rootSelector)});
       for (var n = 0; n < nodes.length; n++) {
         var el = nodes[n];
+        // ASCII marks are ornamental, not reading text: they are allowed to be
+        // smaller than the 12px type floor and are marked as such in the DOM.
+        if (el.closest && el.closest('[data-ornament]')) continue;
         var own = '';
         for (var c = 0; c < el.childNodes.length; c++) {
           if (el.childNodes[c].nodeType === 3) own += el.childNodes[c].nodeValue;
@@ -1767,18 +1714,11 @@ ${figures}
   // never the multi-megabyte PNG it was cut from.
   const assetDir = path.join(root, 'dist', 'assets');
   const shipped = fs.existsSync(assetDir) ? fs.readdirSync(assetDir) : [];
-  const pictures = shipped.filter((f) => /\.(webp|avif)$/i.test(f));
-  const heaviest = pictures.reduce((n, f) => Math.max(n, fs.statSync(path.join(assetDir, f)).size), 0);
-  const total = pictures.reduce((n, f) => n + fs.statSync(path.join(assetDir, f)).size, 0);
+  const pictures = shipped.filter((f) => /\.(webp|avif|png|jpe?g)$/i.test(f));
   check(
-    'the three plates ship optimised: each under 500 KB, 600 KB together',
-    pictures.length === 3 && heaviest <= 500 * 1024 && total <= 600 * 1024,
-    { pictures, heaviestKb: Math.round(heaviest / 1024), totalKb: Math.round(total / 1024) },
-  );
-  check(
-    'and no source photograph is shipped at all',
-    !shipped.some((f) => /\.(png|jpe?g)$/i.test(f)),
-    shipped,
+    'the title page ships no photograph at all',
+    pictures.length === 0,
+    { pictures },
   );
 
   /* ---------------------------------------------------------- report */

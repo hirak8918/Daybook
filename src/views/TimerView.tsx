@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useData, useDispatch, useStoreApi } from '../lib/store';
 import { usePomodoro } from '../hooks/usePomodoro';
 import { formatMinutes, toKey } from '../lib/date';
@@ -7,6 +8,7 @@ import { totalsFor } from '../lib/stats';
 import { Segmented } from '../components/Segmented';
 import { TimerRing } from '../components/TimerRing';
 import { Odometer } from '../components/Odometer';
+import { AsciiMark, HOURGLASS } from '../components/AsciiArt';
 import { IconClose, IconExitFullscreen, IconFullscreen, IconPlus } from '../components/Icons';
 import { Sheet } from '../components/Overlays';
 import { useElementSize } from '../hooks/useElementSize';
@@ -32,6 +34,7 @@ export function TimerView({
 }) {
   const timer = usePomodoro();
   const data = useData();
+  const reduced = useReducedMotion();
   const [confirmReset, setConfirmReset] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const { ref, size } = useElementSize<HTMLDivElement>({ w: 900, h: 420 });
@@ -64,6 +67,10 @@ export function TimerView({
         </button>
       </div>
 
+      <div aria-hidden="true" className="absolute left-6 top-3 hidden sm:block">
+        <AsciiMark art={HOURGLASS} className="text-[12px] text-ink-faint" />
+      </div>
+
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
         {fullscreen ? null : (
           <Segmented
@@ -79,16 +86,35 @@ export function TimerView({
           />
         )}
 
-        <TimerRing progress={timer.progress} size={ringSize} label={`${timer.label}: ${timer.clock} remaining`}>
+        <TimerRing
+          progress={timer.progress}
+          size={ringSize}
+          running={timer.running}
+          label={`${timer.label}: ${timer.clock} remaining`}
+        >
           {mode === 'custom' && !timer.running && !timer.hasSpentTime ? (
             <CustomClock
               minutes={timer.customMinutes}
               onChange={(minutes) => timer.setCustomMinutes(minutes)}
             />
           ) : (
-            <p className="font-mono text-clock font-medium leading-none text-ink tab">
-              <Odometer value={timer.clock} />
-            </p>
+            <div className="relative">
+              {timer.running && !reduced ? (
+                <motion.span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-[-22%] rounded-full"
+                  style={{
+                    background:
+                      'radial-gradient(circle, rgb(var(--accent) / 0.22) 0%, rgb(var(--accent) / 0) 72%)',
+                  }}
+                  animate={{ opacity: [0.45, 1, 0.45] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              ) : null}
+              <p className="relative font-mono text-clock font-medium leading-none text-ink tab">
+                <Odometer value={timer.clock} running={timer.running} />
+              </p>
+            </div>
           )}
           <p className="mt-1 font-text text-small text-ink-soft">
             {mode === 'custom' ? 'Custom' : timer.label}

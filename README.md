@@ -4,9 +4,9 @@
 Timer, Activity, Settings — and every one of them fits on a single screen with no
 scrolling. One window, one JSON file, no account, no network code at all.
 
-**Latest release:** [v1.3.0](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
+**Latest release:** [v1.4.0](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
 
-![The first-run screen: a dusk photograph of layered hills, a giant halftone sun engraved in ASCII characters over the sky, the line "What shall we call you, Knight?" over the shaded left third, and a single pill-shaped name field](docs/screenshots/welcome.webp)
+![The first-run page: cream paper under a hairline grid, the question "What shall we call you, Knight?" in the left column, a ruled name field with an accent Begin block, and a slowly turning circular seal on the right](docs/screenshots/welcome.webp)
 
 Daybook keeps the printed-page identity of the earlier releases — warm paper, the
 Fraunces / Geist / JetBrains Mono trio (bundled, so it renders offline), one
@@ -35,8 +35,8 @@ the same app; pick the one that suits you:
 
 | File | What it is |
 |---|---|
-| `Daybook-Setup-1.3.0.exe` | Installer. Per-user, no admin rights, choose the folder, desktop + Start Menu shortcuts, clean uninstaller that leaves your data alone. |
-| `Daybook-Portable-1.3.0.exe` | Single file, nothing installed. Runs from a USB stick or a Downloads folder; its data still lives in `%APPDATA%\Daybook`. |
+| `Daybook-Setup-1.4.0.exe` | Installer. Per-user, no admin rights, choose the folder, desktop + Start Menu shortcuts, clean uninstaller that leaves your data alone. |
+| `Daybook-Portable-1.4.0.exe` | Single file, nothing installed. Runs from a USB stick or a Downloads folder; its data still lives in `%APPDATA%\Daybook`. |
 
 **Requirements:** Windows 10 1809 or newer, or Windows 11, x64. 1000 × 600 is
 the smallest window Daybook will draw itself in.
@@ -62,7 +62,8 @@ A new install is greeted **once**, by name:
 
 Type it, press Enter, and you are in. The name then appears in exactly two
 places — the Home heading (`Today, Ada`) and an editable **Name** row in
-Settings → App — and the screen never returns.
+Settings → App — and the screen never returns. It is asked on a cream title
+page, under a slowly turning seal, and nothing on that page is a photograph.
 
 The rules the interface is built on:
 
@@ -76,13 +77,17 @@ The rules the interface is built on:
 
 ## Screens
 
+These captures are the night edition; Daybook opens in whichever edition Windows
+is using, and Settings → App can pin either. Both editions share one set of
+tokens, so nothing below changes shape between them.
+
 | Home | Timer |
 |---|---|
-| ![Home: today's focus and movement totals, a snapshot strip, and a rolling task list with an add field](docs/screenshots/home.webp) | ![Timer: a large ring with the remaining time, Pomodoro and Custom modes, tag chips and one primary button](docs/screenshots/timer.webp) |
+| ![Home at night: an edition line above today's date, a boxed streak and score, and three columns for Focus, Movement and Tasks, with Start focus at the foot of the Focus card](docs/screenshots/home.webp) | ![Timer: a large sixty-tick dial reading 25:00 with a travelling accent arc, Pomodoro and Custom modes, tag chips and one primary Start button](docs/screenshots/timer.webp) |
 
 | Activity | Settings |
 |---|---|
-| ![Activity: a five-level calendar heatmap above a focus bar chart with a 30-day / 12-week / 1-year toggle](docs/screenshots/activity.webp) | ![Settings: four cards of quiet rows that save as you type, including the Name row](docs/screenshots/settings.webp) |
+| ![Activity: four figures across the top, a five-level year heatmap, and a focus chart beside a by-tag breakdown](docs/screenshots/activity.webp) | ![Settings: four numbered cards of quiet rows that save as you type, each with a colophon at its foot](docs/screenshots/settings.webp) |
 
 ## Where your data lives
 
@@ -175,7 +180,7 @@ with no dependency on a POSIX shell.
 | `npm run dist:all` | Build, then package both |
 | `npm test` | 292 self-tests over the reducer, storage, statistics, names and timer |
 | `npm run typecheck` | `tsc --noEmit` for the renderer and for the main process |
-| `npm run verify` | 139 acceptance checks driven against the real app over CDP |
+| `npm run verify` | 141 acceptance checks driven against the real app over CDP |
 | `npm run inspect` | Attach to a running build over CDP and evaluate expressions |
 | `npm run assets` | Regenerate icons, copy the fonts, optimise the three photographs |
 
@@ -200,8 +205,8 @@ executables, named from the same template in `electron-builder.yml`:
 
 | Tag | Asset | Built by |
 |---|---|---|
-| `v1.3.0` | `Daybook-Setup-1.3.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
-| `v1.3.0` | `Daybook-Portable-1.3.0.exe` | `npm run dist:portable` → `portable.artifactName: Daybook-Portable-${version}.${ext}` |
+| `v1.4.0` | `Daybook-Setup-1.4.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
+| `v1.4.0` | `Daybook-Portable-1.4.0.exe` | `npm run dist:portable` → `portable.artifactName: Daybook-Portable-${version}.${ext}` |
 
 The version lives in one place — `version` in `package.json` — and is read back
 at runtime for the single line in Settings that shows it. `release/` is
@@ -233,7 +238,7 @@ src\                   lib\ (schema, reducer, stats, tasks, date, format, name, 
                        views\ (Welcome, Home, Timer, Activity, Settings)
                        components\ (header, charts, heatmap, dialogs, primitives)
 src\assets\fonts       the bundled woff2 files
-src\assets\onboarding  the optimised welcome background (generated, committed)
+src\assets\onboarding  the archived photographic plates (no longer bundled)
 build\                 icon.ico + the png sizes electron-builder needs
 scripts\               dev, build, asset pipeline, unit tests, the CDP verifier
 tests\                 the assertion suite behind `npm test`
@@ -259,20 +264,20 @@ idle CPU is zero.
 
 ### The Welcome screen
 
-It is a full-window layer above the shell, not a route: while it is up, the 48 px
-header and the tab strip are not rendered at all. Its own top 48 px is a
-transparent drag region holding only the caption buttons, so the window stays
-movable and closable.
+The first page is a letterpress title page, not a cover photograph: cream paper
+pinned to the light palette whatever edition the app opens in, a hairline grid
+fading toward the edges, and a seal whose circular legend turns once a minute.
+It is a full-window layer above the shell,
+not a route: while it is up, the app header and the tab strip are not rendered at
+all. Its own top 48 px is a transparent drag region ending before the caption
+buttons, so the window stays movable and closable.
 
-The composition is asymmetric on purpose. The question sits in a shaded left
-column; the photograph carries the right. Behind the words, three dusk plates
-cross-fade every eight seconds — a glow, not a slideshow — and a 16% scrim plus a
-horizontal gradient holds the column at one contrast ratio across all three.
-Over the sky sits the one ornament: a halftone sun drawn in ASCII characters,
-ordered-dithered into a disc (`src/components/AsciiArt.tsx`). It is generated
-from arithmetic at load, so there is no image to fetch and it is identical on
-every launch. Under `prefers-reduced-motion` the plates hold still and the shake
-is skipped; only fades remain.
+The question sits in the left column, two-tone and broken across two lines; the
+name is written on a ruled line with a square accent block at its end. The right
+column holds the seal, the edition number and a three-part colophon. Nothing is
+an image: the page is type, hairline rules and one inline SVG, so the first thing
+the app shows costs no network and no decode. Under `prefers-reduced-motion` the
+seal stops, the page leaves without travelling, and only fades remain.
 
 Everything is sized in `clamp()` and percentages, and the heading uses
 `text-wrap: balance` so it stays on two clean lines down to 1000 × 600. The name
@@ -281,6 +286,22 @@ hyphen, apostrophe and full stop, with whitespace collapsed — because the name
 printed back at you. Anything else shakes the field once (80 ms) and explains
 itself in a 13 px line underneath. There is no skip button: there is nothing to
 skip past.
+
+### ASCII marks
+
+The ornament is borrowed, not drawn by this project. Three pieces come from the
+[ASCII Art Archive](https://www.asciiart.eu/):
+
+| Mark | Artist | Source |
+|---|---|---|
+| Sun | unknown | [Nature → Sun](https://www.asciiart.eu/nature/sun) |
+| Hourglass | unknown | [Miscellaneous → Hourglass](https://www.asciiart.eu/miscellaneous/hourglass) |
+| Feather and Ink | llizard | [Miscellaneous → Feathers](https://www.asciiart.eu/miscellaneous/feathers) |
+
+They appear only inside the app — the Focus card's day mark, the idle timer
+room, the empty task list and the empty charts. Every mark is `aria-hidden`,
+set in JetBrains Mono, and deterministic; none of them is generated or fetched
+at runtime. Per-file attribution is in [CREDITS.md](CREDITS.md).
 
 ### Windows integration
 
@@ -316,7 +337,7 @@ Charts draw from one memoised pass over the stored days.
 ```powershell
 npm run typecheck   # renderer + main process
 npm test            # 292 assertions, no framework: node scripts/test.mjs
-npm run verify      # 139 acceptance checks against the built app
+npm run verify      # 141 acceptance checks against the built app
 npm run verify -- --exe "release\win-unpacked\Daybook.exe"   # …and the packaged one
 npm run verify -- --shots shots-verify                       # plus a PNG per screen
 ```
@@ -359,8 +380,8 @@ frames fail there, and every geometric check still passes.
 `npm run dist:all` produces both files below, unchanged from the release assets:
 
 ```
-release\Daybook-Setup-1.2.0.exe
-release\Daybook-Portable-1.2.0.exe
+release\Daybook-Setup-1.4.0.exe
+release\Daybook-Portable-1.4.0.exe
 ```
 
 They are not code-signed, so the first run shows Windows SmartScreen: click
@@ -373,6 +394,24 @@ is a setting that does nothing. Add `electron-updater` back together with a real
 publish target when there is something to update to.
 
 ## Changelog
+
+### 1.4.0
+
+- **A new first page.** The Welcome screen is now a letterpress title page:
+  cream paper, a hairline grid, a slowly turning seal and a ruled name line.
+  The three photographs, the dark scrim and the generated halftone sun are gone;
+  the screen is type, rules and one SVG, and it loads no image at all.
+- **The clock moves.** The timer's digits now roll from one value to the next,
+  the colon breathes once a second while a session runs, and the dial gained a
+  sixty-tick rim, a travelling arc head and a dot that walks the rim once a
+  minute. Paused means still; reduced motion means no travel.
+- **Borrowed ASCII.** The app's ornament is now sourced from the ASCII Art
+  Archive — a sun on the Focus card, an hourglass in the timer room, a quill in
+  the empty task list and the empty charts — with artist credit in CREDITS.md.
+- **A quieter masthead and richer cards.** Home gained an edition line and a
+  boxed streak/score pair; cards gained a hairline highlight, numbered headings
+  and a little more air. The tab indicator now slides between sections.
+- Version 1.4.0 in Settings. No data or schema change.
 
 ### 1.3.0
 
@@ -447,7 +486,7 @@ First release: the newspaper-styled tracker that this one simplified.
 The bundled typefaces keep their own licences: Fraunces and Geist under the SIL
 Open Font License 1.1, JetBrains Mono under the SIL Open Font License 1.1.
 
-The welcome photographs: the knight is the owner's own image; *Foggy mountain* by
-Linh Pham and *Sunset over the mountain forest* by Ryan McMahon are CC0, imported
-from Unsplash via Wikimedia Commons. Per-file sources and licence links are in
-[CREDITS.md](CREDITS.md).
+The archived welcome photographs: the knight is the owner's own image; *Foggy
+mountain* by Linh Pham and *Sunset over the mountain forest* by Ryan McMahon are
+CC0, imported from Unsplash via Wikimedia Commons. They are no longer imported by
+the app. Per-file sources and licence links are in [CREDITS.md](CREDITS.md).
