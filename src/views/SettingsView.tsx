@@ -98,11 +98,14 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
         {/* ------------------------------------------------- daily goals */}
         <section className="card" aria-labelledby="set-goals">
           <div className="card-head">
-            <h2 id="set-goals" className="font-text text-small font-medium text-ink">
-              Daily goals
-            </h2>
+            <div className="flex items-baseline gap-2.5">
+              <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">01</span>
+              <h2 id="set-goals" className="font-text text-small font-medium text-ink">
+                Daily goals
+              </h2>
+            </div>
           </div>
-          <div className="card-body grid content-start gap-1.5">
+          <div className="card-body flex flex-col gap-1.5">
             <NumberRow
               label="Focus"
               suffix="min"
@@ -124,17 +127,23 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
               limit={LIMITS.goalTasks}
               onCommit={(value) => setGoal('tasks', value)}
             />
+            <p className="mt-auto hidden border-t border-rule pt-2 font-text text-micro text-ink-mute [@media(min-height:760px)]:block">
+              These three numbers set the score, the calendar and the streak.
+            </p>
           </div>
         </section>
 
         {/* --------------------------------------------------------- app */}
         <section className="card" aria-labelledby="set-app">
           <div className="card-head">
-            <h2 id="set-app" className="font-text text-small font-medium text-ink">
-              App
-            </h2>
+            <div className="flex items-baseline gap-2.5">
+              <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">02</span>
+              <h2 id="set-app" className="font-text text-small font-medium text-ink">
+                App
+              </h2>
+            </div>
           </div>
-          <div className="card-body grid content-start gap-1.5">
+          <div className="card-body flex flex-col gap-1.5">
             <NameRow
               value={data.profile?.name ?? ''}
               onCommit={(name) => {
@@ -204,18 +213,24 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
               />
             </div>
             {shortcutError ? <p className="font-text text-micro text-accent-deep">{shortcutError}</p> : null}
+            <p className="mt-auto hidden border-t border-rule pt-2 font-text text-micro text-ink-mute [@media(min-height:760px)]:block">
+              Every change saves itself. There is no Save button to forget.
+            </p>
           </div>
         </section>
 
         {/* ------------------------------------------------------- timer */}
         <section className="card" aria-labelledby="set-timer">
           <div className="card-head">
-            <h2 id="set-timer" className="font-text text-small font-medium text-ink">
-              Timer
-            </h2>
+            <div className="flex items-baseline gap-2.5">
+              <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">03</span>
+              <h2 id="set-timer" className="font-text text-small font-medium text-ink">
+                Timer
+              </h2>
+            </div>
             <span className="font-text text-micro text-ink-mute">Changes apply from the next session.</span>
           </div>
-          <div className="card-body grid content-start gap-1.5">
+          <div className="card-body flex flex-col gap-1.5">
             <div className="grid grid-cols-5 gap-x-2">
               <CompactField
                 label="Focus"
@@ -289,17 +304,23 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
                 }}
               />
             </div>
+            <p className="mt-auto hidden border-t border-rule pt-2 font-text text-micro text-ink-mute [@media(min-height:760px)]:block">
+              A running session keeps counting while the window is minimised.
+            </p>
           </div>
         </section>
 
         {/* -------------------------------------------------------- data */}
         <section className="card" aria-labelledby="set-data">
           <div className="card-head">
-            <h2 id="set-data" className="font-text text-small font-medium text-ink">
-              Data
-            </h2>
+            <div className="flex items-baseline gap-2.5">
+              <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">04</span>
+              <h2 id="set-data" className="font-text text-small font-medium text-ink">
+                Data
+              </h2>
+            </div>
           </div>
-          <div className="card-body grid content-start gap-1.5">
+          <div className="card-body flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
               <button className="btn" onClick={() => void exportData()}>
                 <IconDownload size={15} /> Export
@@ -313,6 +334,9 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
             </div>
             <p className="font-text text-micro text-ink-mute">
               One JSON file in %APPDATA%\Daybook, with the last five saves kept beside it.
+            </p>
+            <p className="hidden border-t border-rule pt-2 font-text text-micro text-ink-mute [@media(min-height:760px)]:block">
+              Export writes one JSON file. Import replaces the whole document.
             </p>
             <div className="mt-auto pt-2">
               <button className="btn border-accent text-accent-deep" onClick={() => setEraseOpen(true)}>
@@ -328,7 +352,7 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
           Everything is stored on this computer. Nothing is sent anywhere.
         </p>
         <p className="font-text text-micro text-ink-mute">
-          Daybook <span className="font-mono">{boot?.version ?? '1.3.0'}</span>
+          Daybook <span className="font-mono">{boot?.version ?? '1.4.0'}</span>
         </p>
       </footer>
 

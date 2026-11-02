@@ -4,6 +4,7 @@ import { formatMinutes, formatMinutesShort } from '../lib/date';
 import { focusBars, type Bar, type RangeId } from '../lib/stats';
 import type { DaybookData } from '../lib/schema';
 import { useElementSize } from '../hooks/useElementSize';
+import { AsciiMark, SUN } from './AsciiArt';
 
 const PAD = { top: 20, right: 12, bottom: 24, left: 48 };
 
@@ -48,6 +49,15 @@ export function FocusChart({ data, range }: { data: DaybookData; range: RangeId 
   )}${bestBar ? ` on ${bestBar.label}` : ''}.`;
 
   const activeBar = active !== null ? bars[active] : null;
+
+  if (total === 0) {
+    return (
+      <div ref={ref} className="relative flex h-full min-h-0 w-full flex-col items-center justify-center gap-3">
+        <AsciiMark art={SUN} className="text-[10px] text-ink-faint" />
+        <p className="font-text text-small text-ink-mute">No focus time in the {RANGE_WORD[range]} yet.</p>
+      </div>
+    );
+  }
 
   return (
     <figure ref={ref} className="relative m-0 h-full min-h-0 w-full">

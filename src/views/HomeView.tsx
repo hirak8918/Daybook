@@ -5,7 +5,7 @@ import { streakFor, totalsFor } from '../lib/stats';
 import { formatMinutes, toKey, type DateKey } from '../lib/date';
 import { count, longDay, noun } from '../lib/format';
 import { GoalBar } from '../components/GoalBar';
-import { EMPTY_BOX } from '../components/AsciiArt';
+import { AsciiMark, FEATHER_INK, SUN } from '../components/AsciiArt';
 import { IconClose, IconPlus } from '../components/Icons';
 import type { Notice } from '../components/Overlays';
 
@@ -34,38 +34,68 @@ export function HomeView({
   const owner = data.profile?.name ?? '';
   const totals = totalsFor(data, today);
   const streak = useMemo(() => streakFor(data, 'combined', today), [data, today]);
+  const todaySessions = data.days[today]?.sessions ?? [];
+  const todayMovements = data.days[today]?.movements ?? [];
 
   const focusColumn = (
     <FocusColumn
       focusMin={totals.focusMin}
       goalMin={goals.deepWorkMin}
+      sessions={todaySessions}
       onStartFocus={onStartFocus}
       onOpenTimer={onOpenTimer}
     />
   );
-  const movementColumn = <MovementColumn movementMin={totals.movementMin} goalMin={goals.movementMin} />;
+  const movementColumn = (
+    <MovementColumn
+      movementMin={totals.movementMin}
+      goalMin={goals.movementMin}
+      last={todayMovements[todayMovements.length - 1] ?? null}
+    />
+  );
   const tasksColumn = <TasksColumn today={today} goal={goals.tasks} onNotice={onNotice} />;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 px-8 py-4">
-      <header className="flex shrink-0 items-end justify-between gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-3 px-8 py-3">
+      <header className="flex shrink-0 items-end justify-between gap-6 border-b border-rule pb-2">
         <div>
-          <h1 className="font-display text-page text-ink">Today{owner ? `, ${owner}` : ''}</h1>
+          <div className="flex items-center gap-3">
+            <span className="label">The daily edition</span>
+            <span aria-hidden="true" className="block h-px w-7 bg-accent" />
+          </div>
+          <h1 className="mt-1 font-display text-page text-ink">Today{owner ? `, ${owner}` : ''}</h1>
           <p className="mt-0.5 font-text text-small text-ink-soft">{longDay(today)}</p>
         </div>
-        <div className="flex items-end gap-6">
-          <span className="font-text text-small text-ink-soft">
-            Streak{' '}
-            <strong className="font-display text-xl font-semibold text-ink tab">{streak.current}</strong>{' '}
-            {noun(streak.current, 'day')}
-          </span>
-          <span className="font-display text-page font-semibold text-ink tab">{totals.score}%</span>
+        <div className="relative flex items-stretch border border-rule bg-paper-raise">
+          <div className="px-4 py-1.5 text-right">
+            <p className="label">Streak</p>
+            <p className="mt-0.5 font-display text-xl font-semibold leading-none text-ink tab">
+              {streak.current}
+              <span className="ml-1 font-text text-micro font-normal text-ink-soft">
+                {noun(streak.current, 'day')}
+              </span>
+            </p>
+          </div>
+          <div className="border-l border-rule px-4 py-1.5 text-right">
+            <p className="label">Today</p>
+            <p className="mt-0.5 font-display text-xl font-semibold leading-none text-ink tab">{totals.score}%</p>
+          </div>
+          <div
+            className="absolute inset-x-0 bottom-0 h-[2px] bg-rule"
+            role="progressbar"
+            aria-label="Today's progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={totals.score}
+            aria-valuetext={`${totals.score}% of the day's goals`}
+          >
+            <div
+              className="h-full bg-accent transition-[width] duration-500 ease-editorial"
+              style={{ width: `${totals.score}%` }}
+            />
+          </div>
         </div>
       </header>
-
-      <div className="shrink-0">
-        <GoalBar value={totals.score} goal={100} label="Today's progress" compact />
-      </div>
 
       {/* Three columns at every supported width. Collapsing to one column with a
           switcher below 1100px hid the task input — and the Home screen the brief
@@ -89,23 +119,40 @@ export function HomeView({
 function FocusColumn({
   focusMin,
   goalMin,
+  sessions,
   onStartFocus,
   onOpenTimer,
 }: {
   focusMin: number;
   goalMin: number;
+  sessions: Array<{ id: string; tag: string; startedAt: string; minutes: number }>;
   onStartFocus: () => void;
   onOpenTimer: () => void;
 }) {
   const snap = useTimerSnapshot();
   const running = snap?.timer.running ?? false;
+  const recent = useMemo(
+    () => [...sessions].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 3),
+    [sessions],
+  );
 
   return (
     <section className="card" aria-labelledby="home-focus">
       <div className="card-head">
-        <h2 id="home-focus" className="font-text text-small font-medium text-ink">
-          Focus
-        </h2>
+        <div className="flex items-baseline gap-2.5">
+          <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">01</span>
+          <h2 id="home-focus" className="font-text text-small font-medium text-ink">
+            Focus
+          </h2>
+        </div>
+        {running ? (
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden="true" className="block h-1.5 w-1.5 rounded-full bg-accent" />
+            <span className="font-mono text-micro uppercase tracking-[0.12em] text-ink-mute">live</span>
+          </span>
+        ) : (
+          <span aria-hidden="true" className="h-px w-6 bg-rule-strong" />
+        )}
       </div>
 
       {/* The figure sits directly under its heading, where the eye expects it;
@@ -116,6 +163,35 @@ function FocusColumn({
           <p className="metric-fluid font-display font-semibold leading-none text-ink tab">{formatMinutes(focusMin)}</p>
           <p className="mt-1 font-text text-small text-ink-soft">of {formatMinutes(goalMin)}</p>
           <GoalBar value={focusMin} goal={goalMin} label="Focus time against today's goal" />
+
+          <div className="mt-4 hidden min-h-0 flex-col [@media(min-height:720px)]:flex">
+            <div className="flex items-baseline justify-between gap-3 border-b border-rule pb-1">
+              <span className="label">Today's sessions</span>
+              <span className="meta">{count(sessions.length, 'session')}</span>
+            </div>
+            {recent.length ? (
+              <ul className="mt-1.5 space-y-1">
+                {recent.map((session) => (
+                  <li key={session.id} className="flex items-baseline gap-2 font-text text-small">
+                    <span className="font-mono text-micro text-ink-mute tab">
+                      {new Date(session.startedAt).toLocaleTimeString(undefined, {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                      })}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-ink-soft">{session.tag}</span>
+                    <span className="font-mono text-micro text-ink-mute tab">{formatMinutes(session.minutes)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-2 flex items-center gap-3">
+                <AsciiMark art={SUN} className="text-[8px] text-ink-faint" />
+                <p className="font-text text-small text-ink-mute">The page is still blank.</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="pt-4">
@@ -138,7 +214,15 @@ function FocusColumn({
  * Movement
  * ------------------------------------------------------------------ */
 
-function MovementColumn({ movementMin, goalMin }: { movementMin: number; goalMin: number }) {
+function MovementColumn({
+  movementMin,
+  goalMin,
+  last,
+}: {
+  movementMin: number;
+  goalMin: number;
+  last: { type: string; label?: string; minutes: number; at: string } | null;
+}) {
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState('');
@@ -174,9 +258,13 @@ function MovementColumn({ movementMin, goalMin }: { movementMin: number; goalMin
   return (
     <section className="card relative" aria-labelledby="home-movement">
       <div className="card-head">
-        <h2 id="home-movement" className="font-text text-small font-medium text-ink">
-          Movement
-        </h2>
+        <div className="flex items-baseline gap-2.5">
+          <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">02</span>
+          <h2 id="home-movement" className="font-text text-small font-medium text-ink">
+            Movement
+          </h2>
+        </div>
+        <span aria-hidden="true" className="h-px w-6 bg-rule-strong" />
       </div>
 
       <div className="card-body flex flex-col">
@@ -184,6 +272,23 @@ function MovementColumn({ movementMin, goalMin }: { movementMin: number; goalMin
           <p className="metric-fluid font-display font-semibold leading-none text-ink tab">{movementMin} min</p>
           <p className="mt-1 font-text text-small text-ink-soft">of {goalMin} min</p>
           <GoalBar value={movementMin} goal={goalMin} label="Movement against today's goal" />
+
+          <div className="mt-4 hidden [@media(min-height:720px)]:block">
+            <p className="label">Last logged</p>
+            {last ? (
+              <p className="mt-1 font-text text-small text-ink-soft">
+                <span className="font-mono text-micro text-ink-mute tab">{last.minutes} min</span>
+                <span className="text-ink-mute"> · </span>
+                {last.type === 'custom' ? last.label || 'Movement' : last.type[0].toUpperCase() + last.type.slice(1)}
+                <span className="text-ink-mute"> · </span>
+                <span className="font-mono text-micro text-ink-mute tab">
+                  {new Date(last.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+                </span>
+              </p>
+            ) : (
+              <p className="mt-1 font-text text-small text-ink-mute">Nothing logged yet.</p>
+            )}
+          </div>
         </div>
 
         <div className="pt-4">
@@ -268,9 +373,12 @@ function TasksColumn({ today, goal, onNotice }: { today: DateKey; goal: number; 
   return (
     <section className="card" aria-labelledby="home-tasks">
       <div className="card-head">
-        <h2 id="home-tasks" className="font-text text-small font-medium text-ink">
-          Tasks
-        </h2>
+        <div className="flex items-baseline gap-2.5">
+          <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">03</span>
+          <h2 id="home-tasks" className="font-text text-small font-medium text-ink">
+            Tasks
+          </h2>
+        </div>
         <span className="meta">{count(total, 'task')} open</span>
       </div>
 
@@ -294,7 +402,7 @@ function TasksColumn({ today, goal, onNotice }: { today: DateKey; goal: number; 
 
       <ul className="mt-1 flex min-h-0 flex-1 flex-col">
         {shown.map((task) => (
-          <li key={task.id} className="entry group flex items-start gap-2 border-b border-rule py-1">
+          <li key={task.id} className="entry group flex items-start gap-2 border-b border-rule py-[3px]">
             <button
               className="mt-[3px] h-[16px] w-[16px] shrink-0 border border-ink-soft bg-paper transition-colors hover:border-accent"
               aria-label={`Complete ${task.title}`}
@@ -310,12 +418,16 @@ function TasksColumn({ today, goal, onNotice }: { today: DateKey; goal: number; 
             </button>
           </li>
         ))}
+        {shown.length > 0 && shown.length < 4 ? (
+          <li aria-hidden="true" className="mt-auto hidden justify-center pt-2 [@media(min-height:720px)]:flex">
+            <AsciiMark art={FEATHER_INK} className="text-[8px] text-ink-faint/80" />
+          </li>
+        ) : null}
+
         {shown.length === 0 ? (
           <li className="flex flex-1 flex-col items-center justify-center gap-3 py-3">
-            <pre aria-hidden="true" className="font-mono text-[11px] leading-[1.15] text-ink-faint select-none">
-              {EMPTY_BOX}
-            </pre>
-            <span className="font-text text-small text-ink-mute">Nothing open. Add one above.</span>
+            <AsciiMark art={FEATHER_INK} className="text-[10px] text-ink-faint" />
+            <span className="font-text text-small text-ink-mute">Nothing open. Write the first line above.</span>
           </li>
         ) : null}
       </ul>

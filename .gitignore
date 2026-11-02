@@ -18,6 +18,9 @@ shots-1080/
 .proto-data/
 shots-proto/
 
+# Local tooling artifacts
+.cloud-attachments/
+
 # Logs and editor / OS noise
 *.log
 .DS_Store

@@ -1,13 +1,30 @@
 # Credits
 
-Daybook's code and interface are [MIT licensed](LICENSE). The image and type
-assets below keep their own terms.
+Daybook's code and interface are [MIT licensed](LICENSE). The image, type and
+ASCII assets below keep their own terms.
 
-## Welcome plates
+## ASCII art
 
-The first-run screen cross-fades between three photographs. Two are CC0 (public
-domain dedication — no attribution required, credited here because it is the
-right thing to do); the third is the owner's own image.
+The ASCII marks in the app are taken from the [ASCII Art Archive](https://www.asciiart.eu/).
+They are reproduced as the archive presents them; the artist's initials are kept
+where they are part of the artwork. The app does not generate ASCII art at
+runtime.
+
+| Mark | File | Title | Artist | Source |
+|---|---|---|---|---|
+| Sun | `SUN` | Star | unknown | [asciiart.eu/nature/sun](https://www.asciiart.eu/nature/sun) |
+| Hourglass | `HOURGLASS` | Title missing | unknown | [asciiart.eu/miscellaneous/hourglass](https://www.asciiart.eu/miscellaneous/hourglass) |
+| Feather and Ink | `FEATHER_INK` | Feather and Ink | llizard | [asciiart.eu/miscellaneous/feathers](https://www.asciiart.eu/miscellaneous/feathers) |
+
+All three live in `src/components/AsciiArt.tsx` and are rendered `aria-hidden`.
+
+## Archived welcome plates
+
+`v1.4.0` replaced the photographic Welcome screen with a typographic title page.
+The three plates are kept in `assets/onboarding/` as source material, but they
+are no longer imported by the app and do not reach the installer. Two are CC0
+(public domain dedication — no attribution required, credited here because it is
+the right thing to do); the third is the owner's own image.
 
 | File | Title | Author | Licence | Source |
 |---|---|---|---|---|
@@ -15,9 +32,8 @@ right thing to do); the third is the owner's own image.
 | `assets/onboarding/welcome-forest.jpg` | Sunset over the mountain forest | Ryan McMahon ([@ryanmcmahonn](https://unsplash.com/@ryanmcmahonn)) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Sunset_over_the_mountain_forest_(Unsplash).jpg) · [Unsplash](https://unsplash.com/photos/Dmp7MITnr0s) |
 | `assets/onboarding/welcome-bg.png` | Knight resting in a golden wildflower meadow | The owner | Used with permission | Supplied with the project |
 
-The `.jpg` and `.png` files are the sources. `npm run assets` derives the WebPs
-that ship in `src/assets/onboarding/`; the sources themselves are never bundled
-into the app.
+The `.jpg` and `.png` files are the sources. `npm run assets` still derives the
+WebPs in `src/assets/onboarding/`; the sources themselves are never bundled.
 
 ## Typefaces
 

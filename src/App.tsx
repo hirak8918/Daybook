@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { DaybookStore, StoreContext, useBoot, useDark, useSelect, useStoreApi } from './lib/store';
 import { AppHeader, type TabId } from './components/AppHeader';
-import { SMALL_SUN } from './components/AsciiArt';
+import { SUN } from './components/AsciiArt';
 import { WelcomeScreen } from './views/WelcomeScreen';
 import { NoticeStack, type Notice } from './components/Overlays';
 import { DayDialog } from './components/DayDialog';
@@ -285,7 +285,7 @@ function BootScreen() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
         >
-          {SMALL_SUN}
+          {SUN}
         </motion.pre>
         <motion.h1
           className="font-display text-head font-semibold text-ink"
