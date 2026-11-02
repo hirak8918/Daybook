@@ -418,13 +418,13 @@ try {
     if (!layer) return {
       present: false, viewport: [window.innerWidth, window.innerHeight], header: true, tabs: true,
       headingText: null, headingColors: [], headingSize: 0, headingWeight: '0', headingFont: '',
-      headingWrap: '', headingLines: 0, headingEdges: false,
+      headingWrap: '', headingAlign: '', headingLines: 0, headingEdges: false,
       headingBox: { w: 0, h: 0, cx: -999, cy: -999, right: -999 },
       pillBox: { w: 0, h: 0, cx: -999, cy: -999, right: -999 },
       pillRadius: 0, pillBorderWidth: 0, pillBorderColor: '', pillFill: '', pillBlur: 'none', dpr: 1,
       inputFont: '', inputSize: 0, inputPad: 0, inputCaret: '', inputPlaceholder: null, inputLabel: null,
       focused: false, buttonBox: { w: 0, h: 0, cx: -999, cy: -999, right: -999 }, buttonFill: '',
-      buttonRadius: 0, arrow: null, image: null, strip: null, drags: false, overCaption: null,
+      buttonRadius: 0, arrow: null, image: null, images: [], strip: null, drags: false, overCaption: null,
       scrolls: 0, docScroll: [0, 0], scrollables: 0,
     };
     const round = (n) => Math.round(n * 100) / 100;
@@ -453,6 +453,7 @@ try {
       headingWeight: headingStyle.fontWeight,
       headingFont: headingStyle.fontFamily,
       headingWrap: headingStyle.textWrap,
+      headingAlign: headingStyle.textAlign,
       headingLines: Math.round(heading.getBoundingClientRect().height / parseFloat(headingStyle.lineHeight)),
       headingEdges:
         heading.getBoundingClientRect().left > 0 && heading.getBoundingClientRect().right < window.innerWidth,
@@ -484,6 +485,14 @@ try {
             loaded: image.naturalWidth > 0,
           }
         : null,
+      // The screen cross-fades through three plates; all three are in the DOM
+      // with opacity on the active one, so the set is what is checked.
+      images: [...layer.querySelectorAll('img')].map((img) => ({
+        src: String(img.currentSrc || img.src).split('/').pop(),
+        fit: style(img).objectFit,
+        position: style(img).objectPosition,
+        loaded: img.naturalWidth > 0,
+      })),
       strip: strip ? { h: round(strip.getBoundingClientRect().height), right: round(strip.getBoundingClientRect().right) } : null,
       drags: (() => {
         const el = document.elementFromPoint(300, 24);
@@ -516,22 +525,28 @@ try {
     welcome.headingColors,
   );
   check(
-    'the heading is Fraunces at regular weight, 28–44px',
-    /Fraunces/.test(welcome.headingFont) && welcome.headingWeight === '400' && welcome.headingSize >= 28 && welcome.headingSize <= 44,
+    'the heading is Fraunces at regular weight, 30–52px',
+    /Fraunces/.test(welcome.headingFont) && welcome.headingWeight === '400' && welcome.headingSize >= 30 && welcome.headingSize <= 52,
     { font: welcome.headingFont, weight: welcome.headingWeight, size: welcome.headingSize },
   );
-  check('the heading is centred, with room to balance', welcome.headingWrap === 'balance' && welcome.headingEdges, welcome.headingWrap);
   check(
-    'the heading’s middle sits on the 50% line',
-    Math.abs(welcome.headingBox.cx - welcome.viewport[0] / 2) <= 2 &&
-      Math.abs(welcome.headingBox.cy - welcome.viewport[1] / 2) <= welcome.viewport[1] * 0.02,
+    'the heading is left-aligned in the shaded column, with room to balance',
+    (welcome.headingAlign === 'left' || welcome.headingAlign === 'start') &&
+      welcome.headingWrap === 'balance' && welcome.headingEdges &&
+      welcome.headingBox.x > 20 && welcome.headingBox.right < welcome.viewport[0] * 0.7,
+    { align: welcome.headingAlign, wrap: welcome.headingWrap, box: welcome.headingBox, viewport: welcome.viewport },
+  );
+  check(
+    'it sits in the upper half, leaving the photograph the right of the frame',
+    welcome.headingBox.cy > welcome.viewport[1] * 0.32 && welcome.headingBox.cy < welcome.viewport[1] * 0.55 &&
+      welcome.headingBox.cx < welcome.viewport[0] * 0.45,
     welcome.headingBox,
   );
   check(
-    'the field’s middle sits on the 58% line',
-    Math.abs(welcome.pillBox.cx - welcome.viewport[0] / 2) <= 2 &&
-      Math.abs(welcome.pillBox.cy - welcome.viewport[1] * 0.58) <= welcome.viewport[1] * 0.02,
-    welcome.pillBox,
+    'the field starts on the heading’s left edge, below it',
+    Math.abs(welcome.pillBox.x - welcome.headingBox.x) <= 2 &&
+      welcome.pillBox.y > welcome.headingBox.y + welcome.headingBox.h,
+    { pill: welcome.pillBox, heading: welcome.headingBox },
   );
   check(
     'the field is a 64–70px pill, 340–560px wide, 16–18px corners',
@@ -599,10 +614,11 @@ try {
     welcome.arrow,
   );
   check(
-    'the background is the bundled WebP, cover, held at 50% 40%',
-    welcome.image !== null && /\.webp$/.test(welcome.image.src) && welcome.image.fit === 'cover' &&
-      welcome.image.position === '50% 40%' && welcome.image.loaded,
-    welcome.image,
+    'three bundled WebP plates, cover, held at 50% 42%',
+    welcome.images.length === 3 &&
+      welcome.images.every((img) => /\.webp$/.test(img.src) && img.fit === 'cover' && img.position === '50% 42%') &&
+      welcome.images[0].loaded,
+    welcome.images,
   );
   check(
     'the Welcome screen never scrolls',
@@ -694,6 +710,22 @@ try {
         var L = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
         if (L > best) { best = L; brightest = [data[i], data[i + 1], data[i + 2]]; }
       }
+      // The photograph is not what the line sits on: a 16% scrim covers every
+      // plate, and the left column carries a further horizontal shade. Model
+      // both — same stops as WelcomeScreen.tsx — rather than measuring the raw
+      // photo and reporting a ratio nobody ever sees.
+      var noteX = (box.left + box.width / 2) / W;
+      var stops = [[0, 0.94], [0.26, 0.86], [0.5, 0.46], [0.72, 0.06], [1, 0]];
+      var shade = 0;
+      for (var s = 1; s < stops.length; s++) {
+        if (noteX <= stops[s][0]) {
+          var t = (noteX - stops[s - 1][0]) / (stops[s][0] - stops[s - 1][0]);
+          shade = stops[s - 1][1] + t * (stops[s][1] - stops[s - 1][1]);
+          break;
+        }
+      }
+      var backdropAlpha = 1 - (1 - 0.16) * (1 - shade);
+      brightest = brightest.map(function (v) { return v * (1 - backdropAlpha); });
       var lin = function (v) { var c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
       var rel = function (rgb) { return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]); };
       var parts = String(getComputedStyle(note).color).replace(/[^0-9.]/g, ' ').trim().split(/ +/).map(Number);
@@ -1737,12 +1769,17 @@ ${figures}
   const shipped = fs.existsSync(assetDir) ? fs.readdirSync(assetDir) : [];
   const pictures = shipped.filter((f) => /\.(webp|avif)$/i.test(f));
   const heaviest = pictures.reduce((n, f) => Math.max(n, fs.statSync(path.join(assetDir, f)).size), 0);
+  const total = pictures.reduce((n, f) => n + fs.statSync(path.join(assetDir, f)).size, 0);
   check(
-    'the background ships as one optimised image under 500 KB',
-    pictures.length === 1 && heaviest <= 500 * 1024,
-    { pictures, kb: Math.round(heaviest / 1024) },
+    'the three plates ship optimised: each under 500 KB, 600 KB together',
+    pictures.length === 3 && heaviest <= 500 * 1024 && total <= 600 * 1024,
+    { pictures, heaviestKb: Math.round(heaviest / 1024), totalKb: Math.round(total / 1024) },
   );
-  check('and the source PNG is not shipped at all', !shipped.some((f) => /\.png$/i.test(f)), shipped);
+  check(
+    'and no source photograph is shipped at all',
+    !shipped.some((f) => /\.(png|jpe?g)$/i.test(f)),
+    shipped,
+  );
 
   /* ---------------------------------------------------------- report */
   const failed = results.filter((r) => !r.ok);

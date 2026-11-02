@@ -328,7 +328,7 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
           Everything is stored on this computer. Nothing is sent anywhere.
         </p>
         <p className="font-text text-micro text-ink-mute">
-          Daybook <span className="font-mono">{boot?.version ?? '1.2.0'}</span>
+          Daybook <span className="font-mono">{boot?.version ?? '1.3.0'}</span>
         </p>
       </footer>
 

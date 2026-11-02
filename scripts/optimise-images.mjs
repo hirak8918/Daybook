@@ -1,8 +1,8 @@
 /**
  * Optimises the source images into the files the app actually ships.
  *
- *   assets/onboarding/welcome-bg.png  (source, several MB, NOT bundled)
- *        → src/assets/onboarding/welcome-bg.webp  (≤ ~500 kB, bundled)
+ *   assets/onboarding/welcome-*.{png,jpg}  (sources, several MB, NOT bundled)
+ *        → src/assets/onboarding/welcome-*.webp  (≤ ~500 kB each, bundled)
  *
  * Run by `npm run assets`, which every build and dev start goes through, so the
  * optimised file is always present and never hand-made. The source PNG is kept
@@ -25,16 +25,27 @@ const force = process.argv.includes('--force');
 /** WebP is chosen over AVIF: at this size the saving is small and WebP
  *  decodes in a fraction of the time on a cold window. */
 const QUALITY = 80;
-/** The design canvas is a 2560px-wide desktop window. */
-const TARGET_WIDTH = 2560;
+/** The app's largest window is 1920px wide, so that is the width that matters;
+ *  a 2560px encode would be ~30% more bytes for detail no window can show. */
+const TARGET_WIDTH = 1920;
 /** The task's budget for what the background may add to the installer. */
 const BUDGET_BYTES = 500 * 1024;
 
 const IMAGES = [
   {
+    from: 'assets/onboarding/welcome-hills.jpg',
+    to: 'src/assets/onboarding/welcome-hills.webp',
+    purpose: 'the Welcome screen opening plate',
+  },
+  {
+    from: 'assets/onboarding/welcome-forest.jpg',
+    to: 'src/assets/onboarding/welcome-forest.webp',
+    purpose: 'the Welcome screen second plate',
+  },
+  {
     from: 'assets/onboarding/welcome-bg.png',
     to: 'src/assets/onboarding/welcome-bg.webp',
-    purpose: 'the Welcome screen background',
+    purpose: 'the Welcome screen knight plate',
   },
 ];
 

@@ -365,7 +365,7 @@ function ManualSession({ open, onClose }: { open: boolean; onClose: () => void }
     <Sheet open={open} onClose={onClose} title="Add a session" width="26rem">
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="label normal-case tracking-normal">Minutes</span>
+          <span className="meta">Minutes</span>
           <input
             className="numfield mt-1 w-full"
             type="number"
@@ -376,13 +376,13 @@ function ManualSession({ open, onClose }: { open: boolean; onClose: () => void }
           />
         </label>
         <label className="block">
-          <span className="label normal-case tracking-normal">Started at</span>
+          <span className="meta">Started at</span>
           <input className="numfield mt-1 w-full" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
         </label>
       </div>
 
       <label className="mt-3 block">
-        <span className="label normal-case tracking-normal">Tag</span>
+        <span className="meta">Tag</span>
         <select className="field mt-1" value={tag} onChange={(event) => setTag(event.target.value)}>
           {tagOptions.map((option) => (
             <option key={option} value={option}>

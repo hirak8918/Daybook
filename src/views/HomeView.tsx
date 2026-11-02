@@ -5,6 +5,7 @@ import { streakFor, totalsFor } from '../lib/stats';
 import { formatMinutes, toKey, type DateKey } from '../lib/date';
 import { count, longDay, noun } from '../lib/format';
 import { GoalBar } from '../components/GoalBar';
+import { EMPTY_BOX } from '../components/AsciiArt';
 import { IconClose, IconPlus } from '../components/Icons';
 import type { Notice } from '../components/Overlays';
 
@@ -188,7 +189,7 @@ function MovementColumn({ movementMin, goalMin }: { movementMin: number; goalMin
         <div className="pt-4">
         {open ? (
           <div ref={popover} className="border border-ink bg-paper p-3 shadow-offset-sm">
-            <p className="label normal-case tracking-normal">Minutes</p>
+            <p className="meta">Minutes</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {MOVEMENT_PRESETS.map((preset) => (
                 <button key={preset} className="chip" onClick={() => add(preset)}>
@@ -270,7 +271,7 @@ function TasksColumn({ today, goal, onNotice }: { today: DateKey; goal: number; 
         <h2 id="home-tasks" className="font-text text-small font-medium text-ink">
           Tasks
         </h2>
-        <span className="label normal-case tracking-normal">{count(total, 'task')} open</span>
+        <span className="meta">{count(total, 'task')} open</span>
       </div>
 
       <div className="card-body flex flex-col py-1.5">
@@ -291,7 +292,7 @@ function TasksColumn({ today, goal, onNotice }: { today: DateKey; goal: number; 
         {full ? <p className="mt-1 font-text text-micro text-ink-mute">List is full — finish or delete one.</p> : null}
       </div>
 
-      <ul className="mt-1 min-h-0 flex-1">
+      <ul className="mt-1 flex min-h-0 flex-1 flex-col">
         {shown.map((task) => (
           <li key={task.id} className="entry group flex items-start gap-2 border-b border-rule py-1">
             <button
@@ -309,7 +310,14 @@ function TasksColumn({ today, goal, onNotice }: { today: DateKey; goal: number; 
             </button>
           </li>
         ))}
-        {shown.length === 0 ? <li className="py-2 font-text text-small text-ink-mute">Nothing open. Add one above.</li> : null}
+        {shown.length === 0 ? (
+          <li className="flex flex-1 flex-col items-center justify-center gap-3 py-3">
+            <pre aria-hidden="true" className="font-mono text-[11px] leading-[1.15] text-ink-faint select-none">
+              {EMPTY_BOX}
+            </pre>
+            <span className="font-text text-small text-ink-mute">Nothing open. Add one above.</span>
+          </li>
+        ) : null}
       </ul>
 
       <div className="mt-1 flex items-baseline justify-between gap-3">

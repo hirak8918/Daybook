@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { DaybookStore, StoreContext, useBoot, useDark, useSelect, useStoreApi } from './lib/store';
 import { AppHeader, type TabId } from './components/AppHeader';
+import { SMALL_SUN } from './components/AsciiArt';
 import { WelcomeScreen } from './views/WelcomeScreen';
 import { NoticeStack, type Notice } from './components/Overlays';
 import { DayDialog } from './components/DayDialog';
@@ -277,6 +278,15 @@ function BootScreen() {
   return (
     <div className="grain grid h-full place-items-center bg-paper">
       <div className="w-[min(30rem,80vw)] text-center">
+        <motion.pre
+          aria-hidden="true"
+          className="mx-auto mb-4 font-mono text-[7px] leading-[1.1] text-accent select-none"
+          initial={reduced ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+        >
+          {SMALL_SUN}
+        </motion.pre>
         <motion.h1
           className="font-display text-head font-semibold text-ink"
           initial={reduced ? false : { opacity: 0, y: 8 }}

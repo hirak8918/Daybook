@@ -225,6 +225,13 @@
     font-feature-settings: 'tnum' 1;
   }
 
+  /* Metadata and field captions: the body face at caption size. Mono is kept
+     for things you read as data (the clock, axis ticks, shortcuts, counters) —
+     never for a sentence, so the two faces have one job each. */
+  .meta {
+    @apply font-text text-micro text-ink-mute;
+  }
+
   .num {
     @apply font-display;
     font-variant-numeric: lining-nums tabular-nums;

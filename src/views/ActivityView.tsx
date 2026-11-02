@@ -68,7 +68,7 @@ export function ActivityView({ onPick }: { onPick: (date: string) => void }) {
             <FocusChart data={data} range={range} />
           </div>
           <div className="flex min-h-0 flex-col border-l border-rule pl-4">
-            <p className="label normal-case tracking-normal">By tag</p>
+            <p className="font-text text-small font-medium text-ink">By tag</p>
             <div className="mt-2 min-h-0 flex-1">
               <TagChart data={data} range={range} />
             </div>

@@ -14,6 +14,10 @@ release/
 shots-verify/
 shots-1080/
 
+# Scratch design runs
+.proto-data/
+shots-proto/
+
 # Logs and editor / OS noise
 *.log
 .DS_Store

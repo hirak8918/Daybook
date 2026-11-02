@@ -60,7 +60,7 @@ export function DayDialog({ date, onClose }: { date: DateKey | null; onClose: ()
       {/* ---------------------------------------------------------- focus */}
       <section className="mt-4" aria-label="Focus sessions">
         <header className="flex items-center justify-between border-b border-ink pb-1">
-          <h3 className="label normal-case tracking-normal text-ink">Focus sessions</h3>
+          <h3 className="font-text text-small font-medium text-ink">Focus sessions</h3>
           <button
             className="btn-text"
             onClick={() =>
@@ -125,7 +125,7 @@ export function DayDialog({ date, onClose }: { date: DateKey | null; onClose: ()
       {/* ------------------------------------------------------- movement */}
       <section className="mt-5" aria-label="Movement">
         <header className="flex items-center justify-between border-b border-ink pb-1">
-          <h3 className="label normal-case tracking-normal text-ink">Movement</h3>
+          <h3 className="font-text text-small font-medium text-ink">Movement</h3>
           <button
             className="btn-text"
             onClick={() =>
@@ -192,7 +192,7 @@ export function DayDialog({ date, onClose }: { date: DateKey | null; onClose: ()
       {/* ---------------------------------------------------------- tasks */}
       <section className="mt-5" aria-label="Tasks completed">
         <header className="border-b border-ink pb-1">
-          <h3 className="label normal-case tracking-normal text-ink">Tasks done</h3>
+          <h3 className="font-text text-small font-medium text-ink">Tasks done</h3>
         </header>
         {completed.length === 0 ? (
           <p className="mt-2 font-text text-small text-ink-mute">Nothing finished.</p>

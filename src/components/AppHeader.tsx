@@ -52,7 +52,7 @@ export function AppHeader({ tab, onTab }: { tab: TabId; onTab: (id: TabId) => vo
       </nav>
 
       <div className="no-drag ml-auto flex items-center pr-2">
-        <span className="label normal-case tracking-normal">{shortDay(toKey())}</span>
+        <span className="meta">{shortDay(toKey())}</span>
       </div>
     </header>
   );

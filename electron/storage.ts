@@ -19,7 +19,7 @@ import { DATA_VERSION, DaybookData, defaultData, migrate } from '../src/lib/sche
 const BACKUP_COUNT = 5;
 const SAVE_DEBOUNCE_MS = 350;
 const RETRY_MS = 5000;
-const DEFAULT_APP_VERSION = '1.2.0';
+const DEFAULT_APP_VERSION = '1.3.0';
 /** Matches the BrowserWindow minimum in electron/main.ts. */
 const MIN_WIDTH = 1000;
 const MIN_HEIGHT = 600;

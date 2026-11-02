@@ -4,9 +4,9 @@
 Timer, Activity, Settings — and every one of them fits on a single screen with no
 scrolling. One window, one JSON file, no account, no network code at all.
 
-**Latest release:** [v1.2.0](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
+**Latest release:** [v1.3.0](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
 
-![The first-run screen: an armoured knight asleep in a field of orange wildflowers, with the line "What shall we call you, Knight?" and a single pill-shaped name field](docs/screenshots/welcome.webp)
+![The first-run screen: a dusk photograph of layered hills, a giant halftone sun engraved in ASCII characters over the sky, the line "What shall we call you, Knight?" over the shaded left third, and a single pill-shaped name field](docs/screenshots/welcome.webp)
 
 Daybook keeps the printed-page identity of the earlier releases — warm paper, the
 Fraunces / Geist / JetBrains Mono trio (bundled, so it renders offline), one
@@ -35,8 +35,8 @@ the same app; pick the one that suits you:
 
 | File | What it is |
 |---|---|
-| `Daybook-Setup-1.2.0.exe` | Installer. Per-user, no admin rights, choose the folder, desktop + Start Menu shortcuts, clean uninstaller that leaves your data alone. |
-| `Daybook-Portable-1.2.0.exe` | Single file, nothing installed. Runs from a USB stick or a Downloads folder; its data still lives in `%APPDATA%\Daybook`. |
+| `Daybook-Setup-1.3.0.exe` | Installer. Per-user, no admin rights, choose the folder, desktop + Start Menu shortcuts, clean uninstaller that leaves your data alone. |
+| `Daybook-Portable-1.3.0.exe` | Single file, nothing installed. Runs from a USB stick or a Downloads folder; its data still lives in `%APPDATA%\Daybook`. |
 
 **Requirements:** Windows 10 1809 or newer, or Windows 11, x64. 1000 × 600 is
 the smallest window Daybook will draw itself in.
@@ -177,7 +177,7 @@ with no dependency on a POSIX shell.
 | `npm run typecheck` | `tsc --noEmit` for the renderer and for the main process |
 | `npm run verify` | 139 acceptance checks driven against the real app over CDP |
 | `npm run inspect` | Attach to a running build over CDP and evaluate expressions |
-| `npm run assets` | Regenerate icons, copy the fonts, optimise the background image |
+| `npm run assets` | Regenerate icons, copy the fonts, optimise the three photographs |
 
 `npm run assets` runs automatically before `dev` and `build`, so nothing in
 `src/assets` is ever hand-made:
@@ -185,12 +185,13 @@ with no dependency on a POSIX shell.
 - **Fonts** (`scripts/copy-fonts.mjs`) are copied from the `@fontsource` and
   `geist` packages into `src/assets/fonts` and declared in
   `src/styles/fonts.css`. Nothing is fetched at runtime.
-- **The welcome background** (`scripts/optimise-images.mjs`) is encoded from
-  `assets/onboarding/welcome-bg.png` into a WebP at quality 80 — 1536 × 1024,
-  the source's native size, 259 kB, comfortably under the 500 kB budget — with
-  `sharp`, locally. It is never upscaled: a 2560 px encode of a 1536 px original
-  would carry no extra detail, only bytes. Only the WebP is bundled; the
-  multi-megabyte PNG never reaches the installer.
+- **The welcome plates** (`scripts/optimise-images.mjs`) are encoded from
+  `assets/onboarding/welcome-{hills,forest}.jpg` and `welcome-bg.png` into WebPs
+  at quality 80 and 1920 px wide, with `sharp`, locally. They ship at 88 kB,
+  126 kB and 259 kB — 476 kB for all three, inside the 600 kB the release budget
+  allows — and they are never upscaled: a wider encode of a smaller original
+  would carry no extra detail, only bytes. Only the WebPs are bundled; the
+  multi-megabyte sources never reach the installer.
 
 ## Release assets
 
@@ -199,8 +200,8 @@ executables, named from the same template in `electron-builder.yml`:
 
 | Tag | Asset | Built by |
 |---|---|---|
-| `v1.2.0` | `Daybook-Setup-1.2.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
-| `v1.2.0` | `Daybook-Portable-1.2.0.exe` | `npm run dist:portable` → `portable.artifactName: Daybook-Portable-${version}.${ext}` |
+| `v1.3.0` | `Daybook-Setup-1.3.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
+| `v1.3.0` | `Daybook-Portable-1.3.0.exe` | `npm run dist:portable` → `portable.artifactName: Daybook-Portable-${version}.${ext}` |
 
 The version lives in one place — `version` in `package.json` — and is read back
 at runtime for the single line in Settings that shows it. `release/` is
@@ -261,15 +262,25 @@ idle CPU is zero.
 It is a full-window layer above the shell, not a route: while it is up, the 48 px
 header and the tab strip are not rendered at all. Its own top 48 px is a
 transparent drag region holding only the caption buttons, so the window stays
-movable and closable. Everything is sized in `clamp()` and percentages from the
-1536 × 1024 reference, and the heading uses `text-wrap: balance` so it stays on
-one or two clean lines down to 1000 × 600.
+movable and closable.
 
-The name rule is deliberately narrow — 1 to 24 characters of Unicode letters,
-spaces, hyphen, apostrophe and full stop, with whitespace collapsed — because the
-name is printed back at you. Anything else shakes the field once (80 ms, skipped
-under `prefers-reduced-motion`) and explains itself in a 13 px line underneath.
-There is no skip button: there is nothing to skip past.
+The composition is asymmetric on purpose. The question sits in a shaded left
+column; the photograph carries the right. Behind the words, three dusk plates
+cross-fade every eight seconds — a glow, not a slideshow — and a 16% scrim plus a
+horizontal gradient holds the column at one contrast ratio across all three.
+Over the sky sits the one ornament: a halftone sun drawn in ASCII characters,
+ordered-dithered into a disc (`src/components/AsciiArt.tsx`). It is generated
+from arithmetic at load, so there is no image to fetch and it is identical on
+every launch. Under `prefers-reduced-motion` the plates hold still and the shake
+is skipped; only fades remain.
+
+Everything is sized in `clamp()` and percentages, and the heading uses
+`text-wrap: balance` so it stays on two clean lines down to 1000 × 600. The name
+rule is deliberately narrow — 1 to 24 characters of Unicode letters, spaces,
+hyphen, apostrophe and full stop, with whitespace collapsed — because the name is
+printed back at you. Anything else shakes the field once (80 ms) and explains
+itself in a 13 px line underneath. There is no skip button: there is nothing to
+skip past.
 
 ### Windows integration
 
@@ -363,6 +374,23 @@ publish target when there is something to update to.
 
 ## Changelog
 
+### 1.3.0
+
+- **A redesigned first-run screen.** The question now sits in a shaded left
+  column over a dusk landscape, with a giant sun engraved in ASCII characters
+  over the sky and three plates that cross-fade slowly behind it. Same one
+  question, same keyboard-only flow, same 300 ms fades.
+- **ASCII marks**, each drawn in the bundled mono face and marked `aria-hidden`:
+  the welcome sun, a small sun on the boot screen, the empty task list's
+  checkbox, and the empty by-tag chart's flat line.
+- **One type system.** Fraunces for display, Geist for every label, sentence,
+  field and heading in the interface, JetBrains Mono only for data — clocks,
+  axis ticks, shortcuts, counters, the ASCII. A new `.meta` caption style
+  replaces the mono labels that had crept into rows.
+- Two CC0 photographs by Linh Pham and Ryan McMahon join the owner's knight. All
+  three ship as WebPs, 476 kB together; the PNG and JPEG sources never do.
+- Version 1.3.0 in Settings. No data or schema change.
+
 ### 1.2.0
 
 - **A first-run screen.** One question, asked once: *What shall we call you,
@@ -417,5 +445,9 @@ First release: the newspaper-styled tracker that this one simplified.
 [MIT](LICENSE) © 2026 Hirak Barman (Daybook Press).
 
 The bundled typefaces keep their own licences: Fraunces and Geist under the SIL
-Open Font License 1.1, JetBrains Mono under the SIL Open Font License 1.1. The
-welcome photograph is the owner's own image.
+Open Font License 1.1, JetBrains Mono under the SIL Open Font License 1.1.
+
+The welcome photographs: the knight is the owner's own image; *Foggy mountain* by
+Linh Pham and *Sunset over the mountain forest* by Ryan McMahon are CC0, imported
+from Unsplash via Wikimedia Commons. Per-file sources and licence links are in
+[CREDITS.md](CREDITS.md).
