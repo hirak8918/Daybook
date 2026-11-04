@@ -6,7 +6,6 @@ import { addDays, formatMinutes, startOfWeek, toKey, type DateKey } from '../lib
 import { count, noun } from '../lib/format';
 import { GoalBar } from '../components/GoalBar';
 import { NoteEditor } from '../components/NoteEditor';
-import { AsciiMark, FEATHER_INK } from '../components/AsciiArt';
 import { IconClose } from '../components/Icons';
 import type { Notice } from '../components/Overlays';
 
@@ -155,8 +154,7 @@ function TasksColumn({
           ))}
 
           {shown.length === 0 ? (
-            <li className="flex flex-1 flex-col items-center justify-center gap-2 py-4">
-              <AsciiMark art={FEATHER_INK} className="text-[8px] text-ink-faint" />
+            <li className="flex flex-1 flex-col items-center justify-center py-4">
               <span className="font-text text-small text-ink-mute">No open tasks</span>
             </li>
           ) : null}

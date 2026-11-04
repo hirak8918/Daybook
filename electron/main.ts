@@ -1,7 +1,7 @@
 /**
  * Daybook — main process.
  *
- * Owns: the frameless window + title bar overlay, the tray, the global
+ * Owns: the frameless window + app-drawn caption buttons, the tray, the global
  * shortcut, Windows notifications, taskbar progress/flash, the Pomodoro
  * service, the global shortcut and the single source of truth for data.
  *
@@ -39,8 +39,6 @@ import { DaybookData, migrate, type Settings } from '../src/lib/schema';
 import { formatClock } from '../src/lib/date';
 
 const APP_ID = 'com.daybook.app';
-/** The one header row: also the drag region and the title-bar overlay height. */
-const TITLEBAR_HEIGHT = 48;
 const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? '';
 
 /**
@@ -147,11 +145,6 @@ function applyThemeToWindow(): void {
   if (!win || win.isDestroyed()) return;
   const dark = currentDark();
   const palette = dark ? THEME.dark : THEME.light;
-  try {
-    win.setTitleBarOverlay({ color: palette.paper, symbolColor: palette.ink, height: TITLEBAR_HEIGHT });
-  } catch {
-    /* not supported on very old Windows builds — the renderer still pads correctly */
-  }
   win.setBackgroundColor(palette.paper);
   refreshTrayIcon();
 }
@@ -216,10 +209,11 @@ function createWindow(): BrowserWindow {
     minWidth: 1000,
     minHeight: 600,
     show: false,
-    // Windows 11 snap layouts, drag and the standard caption buttons keep
-    // working because we hide the title bar rather than remove the frame.
-    titleBarStyle: 'hidden',
-    titleBarOverlay: { color: palette.paper, symbolColor: palette.ink, height: TITLEBAR_HEIGHT },
+    // The caption buttons are rendered by the app (WindowControls), so the
+    // native title bar is removed outright. The header row is the drag region;
+    // the window remains resizable through Electron's frameless hit testing.
+    frame: false,
+    thickFrame: true,
     backgroundColor: palette.paper,
     autoHideMenuBar: true,
     title: 'Daybook',

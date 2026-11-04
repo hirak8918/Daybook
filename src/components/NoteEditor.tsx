@@ -10,8 +10,8 @@ import { useData, useStoreApi } from '../lib/store';
 /**
  * Font size as a real text-style attribute. Mark attributes must be declared by
  * an extension or ProseMirror drops them, so this adds one global attribute to
- * the TextStyle mark and renders it as an inline size. Sizes are fixed steps:
- * a note is a note, not a word processor.
+ * the TextStyle mark and renders it as an inline size. Sizes are the familiar
+ * Word-style steps, chosen from one compact menu.
  */
 const FontSize = Extension.create({
   name: 'fontSize',
@@ -32,12 +32,7 @@ const FontSize = Extension.create({
   },
 });
 
-const SIZES = [
-  { label: 'S', value: '13px' },
-  { label: 'M', value: '15px' },
-  { label: 'L', value: '18px' },
-  { label: 'XL', value: '24px' },
-] as const;
+const SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 48] as const;
 
 /**
  * The Home note sheet. One document-level note, saved as the editor emits it:
@@ -161,29 +156,28 @@ export function NoteEditor() {
 
         <span aria-hidden="true" className="mx-1.5 h-5 w-px bg-rule" />
 
-        {SIZES.map((size) => {
-          const active = activeSize === size.value;
-          return (
-            <button
-              key={size.label}
-              type="button"
-              aria-label={`Text size ${size.label}`}
-              aria-pressed={active}
-              title={`Text size ${size.label}`}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => {
-                const chain = editor.chain().focus();
-                if (active) chain.unsetMark('textStyle').run();
-                else chain.setMark('textStyle', { fontSize: size.value }).run();
-              }}
-              className={`flex h-8 min-w-8 items-center justify-center rounded-[6px] px-1.5 font-text text-[12px] transition-colors ${
-                active ? 'bg-accent-wash text-accent-deep' : 'text-ink-soft hover:bg-paper-deep hover:text-ink'
-              }`}
-            >
-              {size.label}
-            </button>
-          );
-        })}
+        <label htmlFor="note-size" className="sr-only">
+          Text size
+        </label>
+        <select
+          id="note-size"
+          aria-label="Text size"
+          value={activeSize ? String(parseFloat(activeSize)) : ''}
+          onChange={(event) => {
+            const value = event.target.value;
+            const chain = editor.chain().focus();
+            if (!value) chain.unsetMark('textStyle').run();
+            else chain.setMark('textStyle', { fontSize: `${value}px` }).run();
+          }}
+          className="h-8 rounded-[6px] border border-rule bg-paper-raise px-2 font-text text-[12px] text-ink-soft outline-none transition-colors hover:border-rule-strong focus:border-accent"
+        >
+          <option value="">Size</option>
+          {SIZES.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="note-editor min-h-0 flex-1 overflow-y-auto px-6 py-5">

@@ -1,6 +1,7 @@
 import { toKey } from '../lib/date';
 import { shortDay } from '../lib/format';
 import { IconActivity, IconHome, IconSettings, IconTimer } from './Icons';
+import { LogoMark } from './Logo';
 
 export type TabId = 'home' | 'timer' | 'activity' | 'settings';
 
@@ -19,7 +20,8 @@ export const TABS: Array<{ id: TabId; label: string; Icon: typeof IconHome }> = 
 export function AppSidebar({ tab, onTab }: { tab: TabId; onTab: (id: TabId) => void }) {
   return (
     <aside className="flex w-[10.5rem] shrink-0 flex-col border-r border-rule bg-paper-deep">
-      <div className="drag flex h-12 shrink-0 items-center px-5">
+      <div className="drag flex h-12 shrink-0 items-center gap-2 px-4">
+        <LogoMark className="h-5 text-[#001766] dark:text-accent" />
         <span className="font-display text-word font-semibold tracking-[-0.02em] text-ink">
           Daybook<span className="text-accent">.</span>
         </span>

@@ -3,7 +3,6 @@ import { formatMinutes } from '../lib/date';
 import { tagBars, type RangeId } from '../lib/stats';
 import type { DaybookData } from '../lib/schema';
 import { useElementSize } from '../hooks/useElementSize';
-import { AsciiMark, SUN } from './AsciiArt';
 
 const LABEL_W = 84;
 const GAP = 10;
@@ -28,7 +27,6 @@ export function TagChart({ data, range }: { data: DaybookData; range: RangeId })
     <figure ref={ref} className="relative m-0 h-full min-h-0 w-full" aria-label={summary}>
       {rows.length === 0 ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
-          <AsciiMark art={SUN} className="text-[7px] text-ink-faint" />
           <p className="font-text text-small text-ink-mute">No focus sessions in this range yet.</p>
         </div>
       ) : (
@@ -52,7 +50,7 @@ export function TagChart({ data, range }: { data: DaybookData; range: RangeId })
                   y={y + rowH / 2 + 4}
                   textAnchor="end"
                   fill="rgb(var(--ink-soft))"
-                  style={{ font: '400 12px Geist, Verdana, sans-serif' }}
+                  style={{ font: '400 12px Fraunces, Georgia, serif' }}
                 >
                   {row.tag.length > 12 ? `${row.tag.slice(0, 11)}…` : row.tag}
                 </text>
@@ -68,7 +66,7 @@ export function TagChart({ data, range }: { data: DaybookData; range: RangeId })
                   x={LABEL_W + GAP + width + 6}
                   y={y + rowH / 2 + 4}
                   fill="rgb(var(--ink))"
-                  style={{ font: '500 12px "JetBrains Mono", monospace' }}
+                  style={{ font: '500 12px Fraunces, Georgia, serif' }}
                 >
                   {formatMinutes(row.minutes)}
                 </text>

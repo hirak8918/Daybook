@@ -7,7 +7,7 @@ rich-text page, keep a short list of tasks beside it, then start a focus session
 on the Timer. Activity shows what the week actually looked like. One window, one
 JSON file, no account, no network code.
 
-**Latest release:** [v2.0.0](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
+**Latest release:** [v2.1.0](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
 
 ![Daybook's Welcome screen: a cream page with the wordmark and the single question "What should we call you?" above a boxed name field](docs/screenshots/welcome.webp)
 
@@ -32,7 +32,7 @@ Grab the newest build from [**Releases**](../../releases/latest).
 
 | File | What it is |
 |---|---|
-| `Daybook-Setup-2.0.0.exe` | The installer. Per-user, no admin rights, choice of folder, desktop and Start Menu shortcuts, and a clean uninstaller that leaves your data alone. |
+| `Daybook-Setup-2.1.0.exe` | The installer. Per-user, no admin rights, choice of folder, desktop and Start Menu shortcuts, and a clean uninstaller that leaves your data alone. |
 
 **Requirements:** Windows 10 1809 or newer, or Windows 11, x64. 1000 × 600 is the
 smallest window Daybook draws itself in.
@@ -42,13 +42,13 @@ click **More info → Run anyway**. See
 [that section](#packaging-and-the-smartscreen-warning) for how to remove the
 warning properly.
 
-Portable builds are gone in 2.0.0. There is one installer and no other target.
+Portable builds are gone. There is one installer and no other target.
 
 ## What it does
 
 | Tab | The one thing you do there |
 |---|---|
-| **Home** | Write. The page is a single rich-text note — bold, italic, underline, and four fixed text sizes. Focus today and the task list sit in the margin. There is no timer button here; starting work belongs to the Timer. |
+| **Home** | Write. The page is a single rich-text note — bold, italic, underline, and a Word-style size menu. Focus today and the task list sit in the margin. There is no timer button here; starting work belongs to the Timer. |
 | **Timer** | Run a Pomodoro or a custom-length session. It keeps counting while minimised, in the tray, or after a restart, and logs itself when it ends. |
 | **Activity** | See the shape of your focus: today, this week, the current streak, a 30-day chart and a year calendar. Click a day to correct its sessions or completed tasks. |
 | **Settings** | Goals, name and theme, timer lengths, and the data tools. Four plain cards; everything saves as you type or leave the field. |
@@ -171,12 +171,12 @@ Everything works from `cmd.exe` too: every script is cross-platform Node tooling
 | `npm run dist` | Build, then package the NSIS installer |
 | `npm test` | 307 self-tests over the reducer, storage, statistics, notes, names and timer |
 | `npm run typecheck` | `tsc --noEmit` for the renderer and the main process |
-| `npm run verify` | 113 acceptance checks driven against the built app over CDP |
+| `npm run verify` | 116 acceptance checks driven against the built app over CDP |
 | `npm run inspect` | Attach to a running build over CDP and evaluate expressions |
 | `npm run assets` | Regenerate icons, copy fonts, and keep the archived source plates optimised |
 
-The asset step runs automatically before `dev` and `build`. Fonts are copied from
-the `geist` and `@fontsource` packages into `src/assets/fonts` and declared in
+The asset step runs automatically before `dev` and `build`. Fraunces is copied
+from `@fontsource-variable/fraunces` into `src/assets/fonts` and declared in
 `src/styles/fonts.css`; nothing is fetched at runtime.
 
 ## Release assets
@@ -186,6 +186,7 @@ one Windows x64 executable:
 
 | Tag | Asset | Built by |
 |---|---|---|
+| `v2.1.0` | `Daybook-Setup-2.1.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
 | `v2.0.0` | `Daybook-Setup-2.0.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
 
 The version lives in `package.json` and is read back at runtime for the one line
@@ -240,11 +241,11 @@ channel per operation, every message validated in `sanitizeAction`.
 ### The note editor
 
 TipTap drives one `EditorContent` with a deliberately small schema: paragraph and
-hard break, bold, italic, underline, and a `textStyle` font-size mark with four
-fixed values (13, 15, 18 and 24 px). The toolbar has B / I / U and S / M / L / XL;
-there are no headings, lists, colours, links or images. The HTML is stored as the
-editor emits it. Saves are debounced 400 ms and flushed on blur and unmount, and
-the reducer clamps the payload at 200,000 characters.
+hard break, bold, italic, underline, and a `textStyle` font-size mark. The toolbar
+has B / I / U and a Word-style menu from 12 to 48 px; there are no headings,
+lists, colours, links or images. The HTML is stored as the editor emits it. Saves
+are debounced 400 ms and flushed on blur and unmount, and the reducer clamps the
+payload at 200,000 characters.
 
 ### How the timer survives everything
 
@@ -259,8 +260,8 @@ idle CPU is zero.
 
 - Per-user NSIS install (`asInvoker`), no admin rights, choice of directory,
   desktop + Start Menu shortcuts, and an uninstaller that leaves data alone.
-- `titleBarStyle: 'hidden'` with `titleBarOverlay`, so snap layouts, dragging and
-  the standard caption buttons keep working; the top 48 px is the drag region.
+- A frameless window with app-drawn caption buttons at the same 48 px height as
+  the header; the top row is the drag region and the controls stay inside it.
 - Tray menu (show, start/pause, reset, quit) with a live countdown tooltip.
 - Taskbar: `setProgressBar` while a session runs, `flashFrame` when one ends
   behind another window, and the window title becomes `24:10 · Focus — Daybook`.
@@ -281,7 +282,7 @@ never leaves the machine.
 ```powershell
 npm run typecheck   # renderer + main process
 npm test            # 307 assertions, no framework: node scripts/test.mjs
-npm run verify      # 113 acceptance checks against the built app
+npm run verify      # 116 acceptance checks against the built app
 npm run verify -- --exe "release\win-unpacked\Daybook.exe"   # …and the packaged one
 npm run verify -- --shots shots-verify --shot-size 1440x900  # plus a PNG per screen
 ```
@@ -315,7 +316,7 @@ chart measuring itself, a dialog's exit animation, a screenshot — will not fin
 `npm run dist` produces one file:
 
 ```
-release\Daybook-Setup-2.0.0.exe
+release\Daybook-Setup-2.1.0.exe
 ```
 
 It is not code-signed, so the first run shows Windows SmartScreen: click
@@ -328,6 +329,15 @@ is a setting that does nothing. Add `electron-updater` back with a real publish
 target when there is something to update to.
 
 ## Changelog
+
+### 2.1.0
+
+- New logo in the app, installer, tray and Welcome, with soft blurred marks behind
+  the first page.
+- Fraunces everywhere, including figures, labels, the clock and the note editor.
+- Caption buttons drawn inside the 48 px header so minimise, maximise and close
+  fit the window at every scale.
+- Note sizes are now Word-style numbers: 12, 14, 16, 18, 20, 24, 28, 32, 36 and 48.
 
 ### 2.0.0
 
@@ -378,6 +388,6 @@ target when there is something to update to.
 
 [MIT](LICENSE) © 2026 Hirak Barman (Daybook Press).
 
-The bundled typefaces keep their own licences: Geist and JetBrains Mono under the
-SIL Open Font License 1.1. The archived Welcome photographs are no longer imported
-by the app; their sources and licences are in [CREDITS.md](CREDITS.md).
+The bundled typeface keeps its own licence: Fraunces under the SIL Open Font
+License 1.1. The archived Welcome photographs are no longer imported by the app;
+their sources and licences are in [CREDITS.md](CREDITS.md).

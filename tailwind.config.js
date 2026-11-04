@@ -32,9 +32,9 @@ module.exports = {
         olive: 'rgb(var(--olive) / <alpha-value>)',
       },
       fontFamily: {
-        display: ['Geist', 'Verdana', 'Tahoma', 'sans-serif'],
-        text: ['Geist', 'Verdana', 'Tahoma', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Consolas', 'Courier New', 'monospace'],
+        display: ['Fraunces', 'Georgia', 'Times New Roman', 'serif'],
+        text: ['Fraunces', 'Georgia', 'Times New Roman', 'serif'],
+        mono: ['Fraunces', 'Georgia', 'Times New Roman', 'serif'],
       },
       /* Nothing below 12px ships. Labels are 12px; body is 14–15px. */
       fontSize: {

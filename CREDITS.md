@@ -1,22 +1,13 @@
 # Credits
 
 Daybook's code and interface are [MIT licensed](LICENSE). The image, type and
-ASCII assets below keep their own terms.
+brand assets below keep their own terms.
 
-## ASCII art
+## Logo
 
-The ASCII marks in the app are taken from the [ASCII Art Archive](https://www.asciiart.eu/).
-They are reproduced as the archive presents them. The app does not generate ASCII
-art at runtime.
-
-| Mark | File | Title | Artist | Source |
-|---|---|---|---|---|
-| Sun | `SUN` | Star | unknown | [asciiart.eu/nature/sun](https://www.asciiart.eu/nature/sun) |
-| Feather and Ink | `FEATHER_INK` | Feather and Ink | llizard | [asciiart.eu/miscellaneous/feathers](https://www.asciiart.eu/miscellaneous/feathers) |
-
-Both live in `src/components/AsciiArt.tsx` and are rendered `aria-hidden`. The
-hourglass that 1.x used in the timer room is no longer shown; it remains in the
-same file as an unused archive export.
+The Daybook mark is the owner's artwork. It ships as
+`src/assets/logo.svg`, `src/assets/logo.png`, the Windows icon and the tray
+glyphs. The app icon is generated from the SVG by `scripts/make-icons.mjs`.
 
 ## Archived welcome plates
 
@@ -34,15 +25,13 @@ owner's own image.
 | `assets/onboarding/welcome-bg.png` | Knight resting in a golden wildflower meadow | The owner | Used with permission | Supplied with the project |
 
 The `.jpg` and `.png` files are the sources. `npm run assets` keeps the derived
-WebPs current, but neither the sources nor the WebPs are bundled with 2.0.0.
+WebPs current, but neither the sources nor the WebPs are bundled with 2.1.0.
 
-## Typefaces
+## Typeface
 
 | Family | Role | Licence |
 |---|---|---|
-| [Geist](https://github.com/vercel/geist-font) | Every heading, label and body line | [SIL OFL 1.1](https://openfontlicense.org/) |
-| [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) | Clock, figures, axis ticks and shortcuts | [SIL OFL 1.1](https://openfontlicense.org/) |
-| [Fraunces](https://github.com/undercasetype/Fraunces) | Bundled legacy display face; not used by the 2.0.0 interface | [SIL OFL 1.1](https://openfontlicense.org/) |
+| [Fraunces](https://github.com/undercasetype/Fraunces) | Every heading, label, figure and body line | [SIL OFL 1.1](https://openfontlicense.org/) |
 
 The woff2 files are copied into `src/assets/fonts/` by `scripts/copy-fonts.mjs`
 and loaded from disk. Nothing is fetched at runtime.

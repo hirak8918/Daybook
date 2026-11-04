@@ -1,13 +1,11 @@
 /**
- * Copies the three bundled font families out of node_modules into
+ * Copies the one bundled type family out of node_modules into
  * src/assets/fonts so the app is 100% offline: no CDN, no @import, no
  * network at runtime. Re-runnable: `npm run assets`.
  *
- *   Display → Fraunces (variable: optical size + weight + SOFT/WONK axes)
- *   Text    → Geist Sans (variable, + variable italic)
- *   Mono    → JetBrains Mono (400 / 500 / 700, tabular figures for timers)
+ *   Fraunces (variable: optical size + weight + SOFT/WONK axes, roman + italic)
  *
- * Swap a family by editing FONTS below and updating src/styles/fonts.css.
+ * Keep src/styles/fonts.css in step with the files below.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,20 +23,6 @@ const FONTS = [
   {
     from: 'node_modules/@fontsource-variable/fraunces/files/fraunces-latin-full-italic.woff2',
     to: 'fraunces-var-italic.woff2',
-  },
-  { from: 'node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2', to: 'geist-sans-var.woff2' },
-  { from: 'node_modules/geist/dist/fonts/geist-sans/Geist-Italic[wght].woff2', to: 'geist-sans-var-italic.woff2' },
-  {
-    from: 'node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2',
-    to: 'jetbrains-mono-400.woff2',
-  },
-  {
-    from: 'node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2',
-    to: 'jetbrains-mono-500.woff2',
-  },
-  {
-    from: 'node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2',
-    to: 'jetbrains-mono-700.woff2',
   },
 ];
 

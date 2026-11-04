@@ -122,7 +122,7 @@ export function createMockBridge(): DaybookBridge {
     data,
     dark: Boolean(darkMq?.matches),
     systemDark: Boolean(darkMq?.matches),
-    version: '2.0.0-preview',
+    version: '2.1.0-preview',
     platform: 'win32',
     isPackaged: false,
     maximized: false,
@@ -159,9 +159,10 @@ export function createMockBridge(): DaybookBridge {
     openDataFolder: async () => ({ ok: false }),
     window: {
       minimize: () => undefined,
-      toggleMaximize: () => {
-        if (document.fullscreenElement) void document.exitFullscreen();
-        else void document.documentElement.requestFullscreen();
+      toggleMaximize: async () => {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+        return Boolean(document.fullscreenElement);
       },
       close: () => window.close(),
       isMaximized: async () => Boolean(document.fullscreenElement),
