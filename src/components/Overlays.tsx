@@ -65,20 +65,20 @@ export function Sheet({
             aria-modal="true"
             aria-label={title}
             tabIndex={-1}
-            className="relative z-10 m-auto flex max-h-[calc(100vh-3rem)] flex-col border border-ink bg-paper shadow-offset"
+            className="relative z-10 m-auto flex max-h-[calc(100vh-3rem)] flex-col rounded-card border border-rule bg-paper-raise shadow-lift"
             style={{ width, maxWidth: 'calc(100% - 3rem)' }}
             initial={reduced ? false : { y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={reduced ? { opacity: 0 } : { y: 10, opacity: 0 }}
             transition={{ duration: 0.18, ease: [0.16, 0.84, 0.44, 1] }}
           >
-            <header className="flex items-center justify-between gap-4 border-b border-ink px-4 py-2.5">
-              <h2 className="font-display text-xl leading-tight text-ink">{title}</h2>
+            <header className="flex items-center justify-between gap-4 border-b border-rule px-5 py-3">
+              <h2 className="font-text text-body font-semibold leading-tight text-ink">{title}</h2>
               <button className="btn-text no-rule -mr-1" onClick={onClose} aria-label="Close dialog">
                 <IconClose size={16} />
               </button>
             </header>
-            <div className={scroll ? 'min-h-0 flex-1 overflow-y-auto px-4 py-4' : 'px-4 py-4'}>{children}</div>
+            <div className={scroll ? 'min-h-0 flex-1 overflow-y-auto px-5 py-4' : 'px-5 py-4'}>{children}</div>
           </motion.div>
         </motion.div>
       ) : null}
@@ -176,8 +176,8 @@ export function NoticeStack({ notices, onDismiss }: { notices: Notice[]; onDismi
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
             transition={{ duration: 0.18, ease: [0.16, 0.84, 0.44, 1] }}
-            className={`pointer-events-auto border bg-paper px-3 py-2 shadow-offset-sm ${
-              notice.tone === 'warn' ? 'border-accent' : 'border-ink'
+            className={`pointer-events-auto rounded-control border bg-paper-raise px-3 py-2 shadow-lift ${
+              notice.tone === 'warn' ? 'border-accent' : 'border-rule'
             }`}
             role="status"
           >

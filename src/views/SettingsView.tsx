@@ -10,7 +10,6 @@ import { IconDownload, IconFolder, IconTrash, IconUpload } from '../components/I
 /** Clamp table for every number in Settings (also enforced in the schema). */
 export const LIMITS = {
   goalFocus: [15, 720],
-  goalMovement: [5, 480],
   goalTasks: [1, 20],
   timerFocus: [1, 180],
   timerShort: [1, 60],
@@ -25,40 +24,35 @@ const THEMES = [
 ];
 
 /**
- * Settings — a full tab, no second window, no Save button. Every field commits
- * on blur or Enter, clamps to its allowed range, and reverts rather than
- * storing nonsense. The quiet "Saved" flash is the only confirmation.
+ * Settings — four plain cards, no Save button, no numbered headings and no
+ * explanatory paragraphs. Every field commits on blur or Enter, clamps to its
+ * allowed range, and reverts rather than storing nonsense.
  */
 export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id'>) => void }) {
   const data = useData();
   const store = useStoreApi();
   const boot = useBoot();
-  const [savedAt, setSavedAt] = useState(0);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
   const [eraseOpen, setEraseOpen] = useState(false);
 
-  const flash = () => setSavedAt(Date.now());
   const { goals, pomodoro } = data.settings;
 
   useEffect(() => {
     setShortcutError(boot?.shortcut.ok === false ? (boot.shortcut.reason ?? 'Windows refused the shortcut.') : null);
   }, [boot?.shortcut]);
 
-  const setGoal = (key: 'deepWorkMin' | 'movementMin' | 'tasks', value: number) => {
+  const setGoal = (key: 'deepWorkMin' | 'tasks', value: number) => {
     store.dispatch({ type: 'settings/goals', patch: { [key]: value } });
-    flash();
   };
 
   const setTimer = (key: 'focusMin' | 'shortBreakMin' | 'longBreakMin' | 'roundsBeforeLong', value: number) => {
     store.dispatch({ type: 'settings/pomodoro', patch: { [key]: value } });
     // The running session keeps its own end time; the next one picks this up.
     void store.bridge.timer.send({ type: 'resync' });
-    flash();
   };
 
   const setFlag = (patch: Partial<typeof data.settings>) => {
     store.dispatch({ type: 'settings/update', patch });
-    flash();
   };
 
   const exportData = async () => {
@@ -74,38 +68,19 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
       return;
     }
     onNotice({ tone: 'good', title: 'Imported', body: result.path });
-    flash();
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col px-8 py-4">
-      <header className="flex shrink-0 items-baseline justify-between gap-4">
-        <h1 className="font-display text-page text-ink">Settings</h1>
-        <span
-          key={savedAt}
-          className={`font-text text-small text-ink-mute ${savedAt ? 'animate-saved-flash' : 'opacity-0'}`}
-          aria-live="polite"
-        >
-          Saved
-        </span>
-      </header>
-
-      {/* The top row carries six rows of controls (the App card) while the cards
-          below it carry three and four. An even split cut the last row off at
-          the 1000×600 minimum, so the top row takes a fifth more of the height
-          and every control keeps its full size. */}
-      <div className="mt-2 grid min-h-0 flex-1 grid-cols-2 grid-rows-[minmax(0,1.25fr)_minmax(0,1fr)] gap-3">
-        {/* ------------------------------------------------- daily goals */}
+    <div className="flex h-full min-h-0 flex-col gap-2 p-4">
+      <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-3">
+        {/* ------------------------------------------------------- goals */}
         <section className="card" aria-labelledby="set-goals">
           <div className="card-head">
-            <div className="flex items-baseline gap-2.5">
-              <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">01</span>
-              <h2 id="set-goals" className="font-text text-small font-medium text-ink">
-                Daily goals
-              </h2>
-            </div>
+            <h2 id="set-goals" className="font-text text-small font-semibold text-ink">
+              Goals
+            </h2>
           </div>
-          <div className="card-body flex flex-col gap-1.5">
+          <div className="card-body flex flex-col gap-1">
             <NumberRow
               label="Focus"
               suffix="min"
@@ -114,50 +89,34 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
               onCommit={(value) => setGoal('deepWorkMin', value)}
             />
             <NumberRow
-              label="Movement"
-              suffix="min"
-              value={goals.movementMin}
-              limit={LIMITS.goalMovement}
-              onCommit={(value) => setGoal('movementMin', value)}
-            />
-            <NumberRow
               label="Tasks"
               suffix="per day"
               value={goals.tasks}
               limit={LIMITS.goalTasks}
               onCommit={(value) => setGoal('tasks', value)}
             />
-            <p className="mt-auto hidden border-t border-rule pt-2 font-text text-micro text-ink-mute [@media(min-height:760px)]:block">
-              These three numbers set the score, the calendar and the streak.
-            </p>
           </div>
         </section>
 
         {/* --------------------------------------------------------- app */}
         <section className="card" aria-labelledby="set-app">
           <div className="card-head">
-            <div className="flex items-baseline gap-2.5">
-              <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">02</span>
-              <h2 id="set-app" className="font-text text-small font-medium text-ink">
-                App
-              </h2>
-            </div>
+            <h2 id="set-app" className="font-text text-small font-semibold text-ink">
+              App
+            </h2>
           </div>
-          <div className="card-body flex flex-col gap-1.5">
+          <div className="card-body flex flex-col gap-1">
             <NameRow
               value={data.profile?.name ?? ''}
-              onCommit={(name) => {
-                store.dispatch({ type: 'profile/set-name', name });
-                flash();
-              }}
+              onCommit={(name) => store.dispatch({ type: 'profile/set-name', name })}
             />
             <div className="flex items-center justify-between gap-2">
               <span className="font-text text-small text-ink">Theme</span>
               <Segmented label="Theme" value={data.settings.theme} onChange={(mode) => void store.setTheme(mode)} options={THEMES} />
             </div>
             <div className="flex items-center justify-between gap-2">
-              <span className="font-text text-small text-ink">Notifications</span>
-              <span className="flex items-center gap-2">
+              <span className="flex min-w-0 items-center gap-2 font-text text-small text-ink">
+                Notifications
                 <button
                   className="btn-text"
                   onClick={async () => {
@@ -171,36 +130,38 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
                 >
                   Test
                 </button>
-                <Toggle
-                  label="Notifications"
-                  checked={data.settings.notifications}
-                  onChange={(next) => setFlag({ notifications: next })}
-                />
               </span>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-text text-small text-ink">Start with Windows</span>
               <Toggle
-                label="Start with Windows"
-                checked={data.settings.startWithWindows}
-                onChange={async (next) => {
-                  const result = await store.bridge.app.setLoginItem(next);
-                  flash();
-                  if (!result.ok) onNotice({ tone: 'warn', title: 'Windows refused the startup entry' });
-                }}
+                label="Notifications"
+                checked={data.settings.notifications}
+                onChange={(next) => setFlag({ notifications: next })}
               />
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-text text-small text-ink">Close to tray</span>
-              <Toggle
-                label="Close to tray"
-                checked={data.settings.minimizeToTray}
-                onChange={(next) => setFlag({ minimizeToTray: next })}
-              />
+            <div className="grid grid-cols-2 gap-x-3">
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="truncate font-text text-small text-ink">Start with Windows</span>
+                <Toggle
+                  label="Start with Windows"
+                  checked={data.settings.startWithWindows}
+                  onChange={async (next) => {
+                    const result = await store.bridge.app.setLoginItem(next);
+                    if (!result.ok) onNotice({ tone: 'warn', title: 'Windows refused the startup entry' });
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="truncate font-text text-small text-ink">Close to tray</span>
+                <Toggle
+                  label="Close to tray"
+                  checked={data.settings.minimizeToTray}
+                  onChange={(next) => setFlag({ minimizeToTray: next })}
+                />
+              </div>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="font-text text-small text-ink">
-                Shortcut <span className="font-mono text-micro text-ink-mute">Ctrl+Alt+P</span>
+              <span className="flex min-w-0 items-baseline gap-2 font-text text-small text-ink">
+                Shortcut
+                <span className="font-mono text-micro text-ink-mute">Ctrl+Alt+P</span>
               </span>
               <Toggle
                 label="Global shortcut"
@@ -208,29 +169,21 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
                 onChange={async (next) => {
                   const result = await store.bridge.app.setShortcut(data.settings.globalShortcut, next);
                   setShortcutError(result.ok ? null : (result.reason ?? 'Windows refused the shortcut.'));
-                  flash();
                 }}
               />
             </div>
             {shortcutError ? <p className="font-text text-micro text-accent-deep">{shortcutError}</p> : null}
-            <p className="mt-auto hidden border-t border-rule pt-2 font-text text-micro text-ink-mute [@media(min-height:760px)]:block">
-              Every change saves itself. There is no Save button to forget.
-            </p>
           </div>
         </section>
 
         {/* ------------------------------------------------------- timer */}
-        <section className="card" aria-labelledby="set-timer">
+        <section className="card" id="set-timer" aria-labelledby="set-timer-heading">
           <div className="card-head">
-            <div className="flex items-baseline gap-2.5">
-              <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">03</span>
-              <h2 id="set-timer" className="font-text text-small font-medium text-ink">
-                Timer
-              </h2>
-            </div>
-            <span className="font-text text-micro text-ink-mute">Changes apply from the next session.</span>
+            <h2 id="set-timer-heading" className="font-text text-small font-semibold text-ink">
+              Timer
+            </h2>
           </div>
-          <div className="card-body flex flex-col gap-1.5">
+          <div className="card-body flex flex-col gap-1">
             <div className="grid grid-cols-5 gap-x-2">
               <CompactField
                 label="Focus"
@@ -267,7 +220,6 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
                 limit={[1, 600]}
                 onCommit={(value) => {
                   void store.bridge.timer.send({ type: 'setCustomMinutes', minutes: value });
-                  flash();
                 }}
               />
             </div>
@@ -276,10 +228,7 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
               <Toggle
                 label="Auto-start breaks"
                 checked={pomodoro.autoStartBreaks}
-                onChange={(next) => {
-                  store.dispatch({ type: 'settings/pomodoro', patch: { autoStartBreaks: next } });
-                  flash();
-                }}
+                onChange={(next) => store.dispatch({ type: 'settings/pomodoro', patch: { autoStartBreaks: next } })}
               />
             </div>
             <div className="flex items-center justify-between gap-2">
@@ -287,10 +236,7 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
               <Toggle
                 label="Auto-start focus"
                 checked={pomodoro.autoStartFocus}
-                onChange={(next) => {
-                  store.dispatch({ type: 'settings/pomodoro', patch: { autoStartFocus: next } });
-                  flash();
-                }}
+                onChange={(next) => store.dispatch({ type: 'settings/pomodoro', patch: { autoStartFocus: next } })}
               />
             </div>
             <div className="flex items-center justify-between gap-2">
@@ -298,30 +244,21 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
               <Toggle
                 label="Sound at the end of a session"
                 checked={pomodoro.chimeSound}
-                onChange={(next) => {
-                  store.dispatch({ type: 'settings/pomodoro', patch: { chimeSound: next } });
-                  flash();
-                }}
+                onChange={(next) => store.dispatch({ type: 'settings/pomodoro', patch: { chimeSound: next } })}
               />
             </div>
-            <p className="mt-auto hidden border-t border-rule pt-2 font-text text-micro text-ink-mute [@media(min-height:760px)]:block">
-              A running session keeps counting while the window is minimised.
-            </p>
           </div>
         </section>
 
         {/* -------------------------------------------------------- data */}
         <section className="card" aria-labelledby="set-data">
           <div className="card-head">
-            <div className="flex items-baseline gap-2.5">
-              <span aria-hidden="true" className="font-mono text-label tracking-[0.08em] text-ink-mute">04</span>
-              <h2 id="set-data" className="font-text text-small font-medium text-ink">
-                Data
-              </h2>
-            </div>
+            <h2 id="set-data" className="font-text text-small font-semibold text-ink">
+              Data
+            </h2>
           </div>
-          <div className="card-body flex flex-col gap-1.5">
-            <div className="flex items-center gap-2">
+          <div className="card-body flex flex-col gap-2">
+            <div className="flex flex-wrap gap-2">
               <button className="btn" onClick={() => void exportData()}>
                 <IconDownload size={15} /> Export
               </button>
@@ -329,30 +266,21 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
                 <IconUpload size={15} /> Import
               </button>
               <button className="btn" onClick={() => void store.bridge.openDataFolder()}>
-                <IconFolder size={15} /> Open data folder
+                <IconFolder size={15} /> Open folder
               </button>
             </div>
-            <p className="font-text text-micro text-ink-mute">
-              One JSON file in %APPDATA%\Daybook, with the last five saves kept beside it.
-            </p>
-            <p className="hidden border-t border-rule pt-2 font-text text-micro text-ink-mute [@media(min-height:760px)]:block">
-              Export writes one JSON file. Import replaces the whole document.
-            </p>
-            <div className="mt-auto pt-2">
+            <div className="mt-auto">
               <button className="btn border-accent text-accent-deep" onClick={() => setEraseOpen(true)}>
-                <IconTrash size={15} /> Erase all data…
+                <IconTrash size={15} /> Erase all data
               </button>
             </div>
           </div>
         </section>
       </div>
 
-      <footer className="mt-2 flex shrink-0 items-center justify-between border-t border-rule pt-1.5">
+      <footer className="flex shrink-0 items-center justify-end">
         <p className="font-text text-micro text-ink-mute">
-          Everything is stored on this computer. Nothing is sent anywhere.
-        </p>
-        <p className="font-text text-micro text-ink-mute">
-          Daybook <span className="font-mono">{boot?.version ?? '1.4.0'}</span>
+          Daybook <span className="font-mono">{boot?.version ?? '2.0.0'}</span>
         </p>
       </footer>
 
@@ -361,10 +289,7 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
         title="Erase all data?"
         body={
           <>
-            <p>
-              A backup is written first, then every session, movement entry and task is removed and the app starts
-              empty.
-            </p>
+            <p>A backup is written first, then every note, session, movement entry and task is removed.</p>
             <p>This cannot be undone from inside Daybook — the backup file is the way back.</p>
           </>
         }
@@ -374,7 +299,6 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
         onConfirm={() => {
           setEraseOpen(false);
           void store.clearAll(false).then(() => {
-            flash();
             onNotice({ tone: 'warn', title: 'All data erased', body: 'A backup was written to %APPDATA%\\Daybook\\backups.' });
           });
         }}
@@ -387,11 +311,6 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
  * Fields
  * ------------------------------------------------------------------ */
 
-/**
- * The owner's name — the same rule the Welcome screen applies, so a name that
- * could not be typed there cannot be typed here either. An entry that fails is
- * put back rather than stored.
- */
 function NameRow({ value, onCommit }: { value: string; onCommit: (name: string) => void }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
@@ -429,7 +348,6 @@ function NameRow({ value, onCommit }: { value: string; onCommit: (name: string) 
   );
 }
 
-/** Label above the box, for the five timer lengths that share one row. */
 function CompactField({
   label,
   suffix,
@@ -459,7 +377,7 @@ function CompactField({
 
   return (
     <label className="flex min-w-0 flex-col gap-0.5">
-      <span className="label truncate normal-case tracking-normal">{label}</span>
+      <span className="font-text text-micro font-medium text-ink-mute">{label}</span>
       <input
         className="numfield w-full"
         type="number"
@@ -509,7 +427,7 @@ function NumberRow({
   };
 
   return (
-    <label className="flex items-center justify-between gap-2">
+    <label className="flex items-center justify-between gap-2 py-0.5">
       <span className="font-text text-small text-ink">{label}</span>
       <span className="flex items-center gap-2">
         <input

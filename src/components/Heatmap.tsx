@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatMinutes, fromKey, toKey, type DateKey } from '../lib/date';
-import { count } from '../lib/format';
-import { heatGrid, ratioFor, type HeatCell, type HeatFilter } from '../lib/stats';
+import { heatGrid, type HeatCell, type HeatFilter } from '../lib/stats';
 import type { DaybookData } from '../lib/schema';
 
 const WEEKDAY_LABELS = ['Mon', 'Wed', 'Fri'];
@@ -73,11 +72,11 @@ export function Heatmap({
   const cols = grid.rows[0].length;
 
   return (
-    <div className="flex min-h-0 flex-col">
+    <div className="mx-auto flex min-h-0 w-full max-w-[65rem] flex-col">
       {/* Month axis: one label per month change, aligned to its week column. */}
       <div
         className="mb-1 grid gap-[3px]"
-        style={{ gridTemplateColumns: `2.4rem repeat(${cols}, minmax(0, 1fr))` }}
+        style={{ gridTemplateColumns: `2.4rem repeat(${cols}, minmax(0, 1rem))` }}
         aria-hidden
       >
         <span />
@@ -96,7 +95,7 @@ export function Heatmap({
         ref={wrap}
         className="relative grid gap-[3px]"
         style={{
-          gridTemplateColumns: `2.4rem repeat(${cols}, minmax(0, 1fr))`,
+          gridTemplateColumns: `2.4rem repeat(${cols}, minmax(0, 1rem))`,
           gridTemplateRows: 'repeat(7, auto)',
         }}
         onMouseLeave={() => setHover(null)}
@@ -134,7 +133,7 @@ export function Heatmap({
               data-col={col}
               data-row={row}
               tabIndex={cursor.col === col && cursor.row === row ? 0 : -1}
-              aria-label={`${cell.key}: ${formatMinutes(cell.totals.focusMin)} focus, ${cell.totals.movementMin} min movement, ${count(cell.totals.tasksDone, 'task')} done`}
+              aria-label={`${cell.key}: ${formatMinutes(cell.totals.focusMin)} focus`}
               disabled={cell.future}
               className={`heat-cell ${cell.future ? 'invisible' : ''}`}
               data-level={cell.level}
@@ -151,7 +150,7 @@ export function Heatmap({
           <div
             role="presentation"
             data-tip="heatmap"
-            className="pointer-events-none absolute z-30 w-[260px] -translate-x-1/2 border border-ink bg-paper px-3 py-2 text-left shadow-offset-sm"
+            className="pointer-events-none absolute z-30 w-[240px] -translate-x-1/2 rounded-control border border-rule bg-paper-raise px-3 py-2 text-left shadow-lift"
             style={{
               left: hover.left,
               top: hover.top,
@@ -167,28 +166,18 @@ export function Heatmap({
               })}
             </p>
             <p className="mt-0.5 font-text text-micro text-ink-soft tab">
-              {formatMinutes(hover.cell.totals.focusMin)} focus · {hover.cell.totals.movementMin} min movement ·{' '}
-              {count(hover.cell.totals.tasksDone, 'task')} done
-            </p>
-            <p className="mt-1 font-text text-micro text-ink-mute">
-              {ratioFor(hover.cell.totals, data.settings.goals, filter) >= 1 ? 'Goal met · ' : ''}
-              Click to open
+              {formatMinutes(hover.cell.totals.focusMin)} focus
             </p>
           </div>
         ) : null}
       </div>
 
-      <div className="mt-2 flex items-end justify-between gap-4">
-        <p className="font-text text-micro text-ink-soft">
-          {count(grid.activeDays, 'active day')} in the last 12 months
-        </p>
-        <div className="flex items-center gap-1.5">
-          <span className="font-text text-micro text-ink-mute">Less</span>
-          {[0, 1, 2, 3, 4].map((level) => (
-            <span key={level} className="heat-cell h-3 w-3" data-level={level} aria-hidden />
-          ))}
-          <span className="font-text text-micro text-ink-mute">More</span>
-        </div>
+      <div className="mt-2 flex items-center justify-end gap-1.5">
+        <span className="font-text text-micro text-ink-mute">Less</span>
+        {[0, 1, 2, 3, 4].map((level) => (
+          <span key={level} className="heat-cell h-3 w-3" data-level={level} aria-hidden />
+        ))}
+        <span className="font-text text-micro text-ink-mute">More</span>
       </div>
 
       <p className="sr-only" aria-live="polite">

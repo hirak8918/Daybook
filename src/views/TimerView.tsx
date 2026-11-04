@@ -8,7 +8,6 @@ import { totalsFor } from '../lib/stats';
 import { Segmented } from '../components/Segmented';
 import { TimerRing } from '../components/TimerRing';
 import { Odometer } from '../components/Odometer';
-import { AsciiMark, HOURGLASS } from '../components/AsciiArt';
 import { IconClose, IconExitFullscreen, IconFullscreen, IconPlus } from '../components/Icons';
 import { Sheet } from '../components/Overlays';
 import { useElementSize } from '../hooks/useElementSize';
@@ -26,11 +25,9 @@ const CUSTOM_PRESETS = [15, 30, 45, 60, 90];
 export function TimerView({
   fullscreen,
   onToggleFullscreen,
-  onEditLengths,
 }: {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
-  onEditLengths: () => void;
 }) {
   const timer = usePomodoro();
   const data = useData();
@@ -65,10 +62,6 @@ export function TimerView({
         >
           {fullscreen ? <IconExitFullscreen size={16} /> : <IconFullscreen size={16} />}
         </button>
-      </div>
-
-      <div aria-hidden="true" className="absolute left-6 top-3 hidden sm:block">
-        <AsciiMark art={HOURGLASS} className="text-[12px] text-ink-faint" />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
@@ -134,11 +127,6 @@ export function TimerView({
                 />
               ))}
             </div>
-            {fullscreen ? null : (
-              <button className="btn-text" onClick={onEditLengths}>
-                {timer.focusMin} · {timer.shortMin} · {timer.longMin} — Edit
-              </button>
-            )}
           </div>
         ) : (
           <div className="flex items-center gap-1.5">
@@ -203,8 +191,7 @@ export function TimerView({
         )}
 
         {fullscreen ? null : (
-          <div className="flex max-w-[46rem] flex-wrap items-center justify-center gap-1.5">
-            <span className="mr-1 font-text text-small text-ink-soft">Working on:</span>
+          <div className="flex max-w-[46rem] flex-wrap items-center justify-center gap-1.5" role="group" aria-label="Focus tag">
             <TagChips />
           </div>
         )}
@@ -216,7 +203,7 @@ export function TimerView({
             Today {formatMinutes(today.focusMin)} · {count(today.sessions, 'session')}
           </p>
           <button className="btn-text" onClick={() => setManualOpen(true)}>
-            Add a session manually
+            Add session
           </button>
         </footer>
       )}
@@ -269,7 +256,6 @@ function CustomClock({ minutes, onChange }: { minutes: number; onChange: (next: 
           }
         }}
       />
-      <span className="mt-1 font-text text-micro text-ink-mute">HH:MM — click to edit</span>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
   FocusSession,
   Goals,
   MovementEntry,
+  NOTE_HTML_MAX,
   ONBOARDING_VERSION,
   PomodoroConfig,
   Settings,
@@ -38,6 +39,7 @@ export type Action =
   | { type: 'settings/pomodoro'; patch: Partial<PomodoroConfig> }
   | { type: 'settings/addTag'; tag: string }
   | { type: 'settings/removeTag'; tag: string }
+  | { type: 'note/set'; html: string }
   | { type: 'session/add'; date: DateKey; session: Omit<FocusSession, 'id'> }
   | { type: 'session/remove'; date: DateKey; id: string }
   | { type: 'session/update'; date: DateKey; id: string; patch: Partial<Omit<FocusSession, 'id'>> }
@@ -98,6 +100,22 @@ export function applyAction(state: DaybookData, action: Action): DaybookData {
       return {
         ...state,
         settings: { ...state.settings, tags, lastTag: state.settings.lastTag === action.tag ? (tags[0] ?? '') : state.settings.lastTag },
+      };
+    }
+
+    case 'note/set': {
+      // Two edits can land inside the same millisecond (the reducer is called on
+      // every keystroke), but the timestamp must still advance: it is how the
+      // file says which save is newer.
+      const previous = Date.parse(state.notes.updatedAt);
+      const now = Date.now();
+      const stamp = Number.isFinite(previous) && now <= previous ? previous + 1 : now;
+      return {
+        ...state,
+        notes: {
+          html: typeof action.html === 'string' ? action.html.slice(0, NOTE_HTML_MAX) : '',
+          updatedAt: new Date(stamp).toISOString(),
+        },
       };
     }
 
@@ -199,6 +217,7 @@ export function applyAction(state: DaybookData, action: Action): DaybookData {
         version: DATA_VERSION,
         createdAt: new Date().toISOString(),
         settings: structuredCloneSafe(DEFAULT_SETTINGS),
+        notes: { html: '', updatedAt: new Date().toISOString() },
         days,
         timer: {
           mode: 'focus',
@@ -239,6 +258,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'settings/pomodoro',
   'settings/addTag',
   'settings/removeTag',
+  'note/set',
   'session/add',
   'session/remove',
   'session/update',
@@ -283,6 +303,10 @@ export function sanitizeAction(raw: unknown): Action | null {
   }
   if (type === 'settings/addTag' && typeof out.tag === 'string') out.tag = out.tag.slice(0, 24);
   if (type === 'settings/removeTag' && typeof out.tag === 'string') out.tag = out.tag.slice(0, 24);
+  if (type === 'note/set') {
+    if (typeof out.html !== 'string') return null;
+    out.html = out.html.slice(0, NOTE_HTML_MAX);
+  }
   if (type === 'session/add' && out.session && typeof out.session === 'object') {
     const s = out.session as Record<string, unknown>;
     out.session = {

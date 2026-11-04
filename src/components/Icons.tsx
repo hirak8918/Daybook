@@ -98,6 +98,33 @@ export const IconExitFullscreen = (p: IconProps) => (
   </Svg>
 );
 
+export const IconHome = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 10.5 12 4l8 6.5V20h-5v-5.5H9V20H4z" />
+  </Svg>
+);
+
+export const IconTimer = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M12 7.5V12l3 2" />
+  </Svg>
+);
+
+export const IconActivity = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
+  </Svg>
+);
+
+export const IconSettings = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+    <circle cx="16" cy="7" r="2" />
+    <circle cx="8" cy="17" r="2" />
+  </Svg>
+);
+
 export const IconWarn = (p: IconProps) => (
   <Svg {...p}>
     <path d="M12 4 3 20h18z" />

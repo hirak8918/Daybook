@@ -54,7 +54,7 @@ export function FocusChart({ data, range }: { data: DaybookData; range: RangeId 
     return (
       <div ref={ref} className="relative flex h-full min-h-0 w-full flex-col items-center justify-center gap-3">
         <AsciiMark art={SUN} className="text-[10px] text-ink-faint" />
-        <p className="font-text text-small text-ink-mute">No focus time in the {RANGE_WORD[range]} yet.</p>
+        <p className="font-text text-small text-ink-mute">No focus time yet.</p>
       </div>
     );
   }
@@ -156,7 +156,7 @@ export function FocusChart({ data, range }: { data: DaybookData; range: RangeId 
 
       {activeBar ? (
         <div
-          className="pointer-events-none absolute top-0 z-20 border border-ink bg-paper px-2 py-1 font-text text-micro text-ink shadow-offset-sm"
+          className="pointer-events-none absolute top-0 z-20 rounded-control border border-rule bg-paper-raise px-2 py-1 font-text text-micro text-ink shadow-lift"
           style={{
             left: `${((PAD.left + (active ?? 0) * slot + slot / 2) / Math.max(1, size.w)) * 100}%`,
             transform: 'translateX(-50%)',

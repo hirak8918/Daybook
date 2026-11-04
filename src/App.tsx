@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { DaybookStore, StoreContext, useBoot, useDark, useSelect, useStoreApi } from './lib/store';
-import { AppHeader, type TabId } from './components/AppHeader';
-import { SUN } from './components/AsciiArt';
+import { AppSidebar, PageBar, type TabId } from './components/AppHeader';
 import { WelcomeScreen } from './views/WelcomeScreen';
 import { NoticeStack, type Notice } from './components/Overlays';
 import { DayDialog } from './components/DayDialog';
@@ -16,10 +15,10 @@ import type { BridgeSignal } from './lib/ipc';
 import type { DateKey } from './lib/date';
 
 /**
- * The shell. One window, one 48px header row, four tabs, and a content area
- * that is exactly the rest of the viewport — no tab may ever scroll. Everything
- * else (tray, taskbar progress, notifications, the global shortcut) is
- * main-process work that the renderer only reflects.
+ * The shell. One window, a fixed left rail, one page title row, four sections,
+ * and a content area that is exactly the rest of the viewport. The only
+ * scrollable things in the app are a long note and the two dialogs that have
+ * always scrolled on purpose.
  */
 export function App() {
   const store = useMemo(() => new DaybookStore(), []);
@@ -206,9 +205,9 @@ function Shell() {
 
   if (bootError) {
     return (
-      <div className="grain grid h-full place-items-center bg-paper px-8">
-        <div className="max-w-[42rem] border border-accent bg-paper p-6 shadow-offset">
-          <h1 className="font-display text-3xl text-ink">Daybook could not open its data file.</h1>
+      <div className="grid h-full place-items-center bg-paper px-8">
+        <div className="w-full max-w-[34rem] rounded-card border border-rule bg-paper-raise p-6 shadow-soft">
+          <h1 className="font-display text-head text-ink">Daybook could not open its data file.</h1>
           <p className="mt-2 font-text text-body text-ink-soft">{bootError}</p>
           <p className="mt-3 font-text text-small text-ink-mute">
             The last five saves are kept in %APPDATA%\Daybook\backups. Reload the window, or restore a backup by hand.
@@ -220,51 +219,43 @@ function Shell() {
 
   if (!ready) return <BootScreen />;
 
-  // The Welcome screen owns the whole window until it has a name: no header, no
-  // tabs, and none of the shortcuts above (Ctrl+1 would otherwise change the tab
-  // underneath and drop the owner somewhere other than Home).
+  // The Welcome screen owns the whole window until it has a name: no rail, no
+  // page bar, and none of the shortcuts above.
   if (welcomeVisible) return <WelcomeScreen onDone={() => setWelcomeDone(true)} />;
+
+  const title =
+    tab === 'home' ? `Today${profileName ? `, ${profileName}` : ''}` : tab === 'timer' ? 'Timer' : tab === 'activity' ? 'Activity' : 'Settings';
 
   const content =
     tab === 'timer' ? (
-      <TimerView
-        fullscreen={fullscreen}
-        onToggleFullscreen={() => enterFullscreen(!fullscreen)}
-        onEditLengths={() => {
-          setTab('settings');
-          window.setTimeout(() => document.getElementById('set-timer')?.scrollIntoView({ block: 'center' }), 60);
-        }}
-      />
+      <TimerView fullscreen={fullscreen} onToggleFullscreen={() => enterFullscreen(!fullscreen)} />
     ) : tab === 'activity' ? (
       <ActivityView onPick={setDay} />
     ) : tab === 'settings' ? (
       <SettingsView onNotice={pushNotice} />
     ) : (
-      <HomeView
-        onStartFocus={() => {
-          setTab('timer');
-          void store.bridge.timer.send({ type: 'start' });
-        }}
-        onOpenTimer={() => setTab('timer')}
-        onNotice={pushNotice}
-      />
+      <HomeView onNotice={pushNotice} />
     );
 
   return (
-    <div className="grain flex h-full flex-col bg-paper">
-      {fullscreen ? null : <AppHeader tab={tab} onTab={setTab} />}
+    <div className="flex h-full overflow-hidden bg-paper">
+      {fullscreen ? null : <AppSidebar tab={tab} onTab={setTab} />}
 
-      <main className="min-h-0 flex-1 overflow-hidden" data-guard={`tab-${tab}`} id="daybook-content">
-        <motion.div
-          key={`${tab}-${fullscreen ? 'full' : 'windowed'}`}
-          className="h-full"
-          initial={false}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.15 }}
-        >
-          {content}
-        </motion.div>
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {fullscreen ? null : <PageBar title={title} />}
+
+        <main className="min-h-0 flex-1 overflow-hidden" data-guard={`tab-${tab}`} id="daybook-content">
+          <motion.div
+            key={`${tab}-${fullscreen ? 'full' : 'windowed'}`}
+            className="h-full"
+            initial={false}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15 }}
+          >
+            {content}
+          </motion.div>
+        </main>
+      </div>
 
       <DayDialog date={day} onClose={() => setDay(null)} />
       <NoticeStack notices={notices} onDismiss={(id) => setNotices((list) => list.filter((n) => n.id !== id))} />
@@ -272,31 +263,22 @@ function Shell() {
   );
 }
 
-/** A brief, quiet start — a rule and the wordmark, then the day. */
+/** A brief, quiet start — the wordmark, a rule, then the day. */
 function BootScreen() {
   const reduced = useReducedMotion();
   return (
-    <div className="grain grid h-full place-items-center bg-paper">
-      <div className="w-[min(30rem,80vw)] text-center">
-        <motion.pre
-          aria-hidden="true"
-          className="mx-auto mb-4 font-mono text-[7px] leading-[1.1] text-accent select-none"
-          initial={reduced ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-        >
-          {SUN}
-        </motion.pre>
+    <div className="grid h-full place-items-center bg-paper">
+      <div className="w-[min(24rem,80vw)] text-center">
         <motion.h1
-          className="font-display text-head font-semibold text-ink"
+          className="font-display text-head font-semibold tracking-[-0.03em] text-ink"
           initial={reduced ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: [0.16, 0.84, 0.44, 1] }}
         >
-          Daybook
+          Daybook<span className="text-accent">.</span>
         </motion.h1>
         <motion.div
-          className="mx-auto mt-3 h-px origin-center bg-rule-strong"
+          className="mx-auto mt-4 h-[2px] w-16 origin-left bg-accent"
           initial={reduced ? false : { scaleX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 0.84, 0.44, 1] }}
