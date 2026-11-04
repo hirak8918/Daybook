@@ -1,11 +1,10 @@
 # electron-builder configuration for Daybook (Windows x64).
 #
-#   npm run dist            → NSIS installer  (release/Daybook-Setup-1.2.0.exe)
-#   npm run dist:portable   → single-file portable exe
-#   npm run dist:all        → both
+#   npm run dist  → NSIS installer  (release/Daybook-Setup-2.0.0.exe)
 #
 # Per-user install by default (`perMachine: false`): no administrator rights,
 # a choice of directory, desktop + Start Menu shortcuts and a clean uninstaller.
+# The portable target was removed in 2.0.0; the installer is the only build.
 
 appId: com.daybook.app
 productName: Daybook
@@ -43,9 +42,6 @@ win:
     - target: nsis
       arch:
         - x64
-    - target: portable
-      arch:
-        - x64
   # A single-point, upper-case-free executable name keeps Windows happy and
   # makes the AppUserModelID grouping predictable.
   executableName: Daybook
@@ -71,8 +67,3 @@ nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
-
-portable:
-  artifactName: Daybook-Portable-${version}.${ext}
-  # Keep the portable build self-contained; its data still lives in %APPDATA%.
-  requestExecutionLevel: user

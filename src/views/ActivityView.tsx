@@ -1,102 +1,63 @@
-import { useState, type ReactNode } from 'react';
 import { useData } from '../lib/store';
-import { HEAT_FILTERS, RANGES, bestWeekdayLine, statFigures, streakRule, type HeatFilter, type RangeId } from '../lib/stats';
+import { statFigures, totalsFor } from '../lib/stats';
 import { formatMinutes, toKey } from '../lib/date';
-import { count, dayMonth } from '../lib/format';
+import { count } from '../lib/format';
 import { Heatmap } from '../components/Heatmap';
 import { FocusChart } from '../components/FocusChart';
-import { TagChart } from '../components/TagChart';
-import { Segmented } from '../components/Segmented';
-import { InfoTip } from '../components/Tooltip';
 
 /**
- * Activity — the year at a glance and a few honest graphs. Four figures at the
- * top, one heatmap, two charts, nothing else. The filter above the heatmap also
- * drives the streak figure; the range toggle drives both charts.
+ * Activity, with the controls removed. Three figures, one 30-day chart and the
+ * year calendar — all of them measuring the same thing, focus time. There is no
+ * filter, no range switch, no tag breakdown and no written insight to decode.
  */
 export function ActivityView({ onPick }: { onPick: (date: string) => void }) {
   const data = useData();
-  const [filter, setFilter] = useState<HeatFilter>('combined');
-  const [range, setRange] = useState<RangeId>('30D');
-
   const today = toKey();
-  const figures = statFigures(data, filter, today);
-  const insight = bestWeekdayLine(data, today);
+  const figures = statFigures(data, 'focus', today);
+  const totals = totalsFor(data, today);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 px-8 py-4">
-      <div className="grid shrink-0 grid-cols-4 border border-rule">
+    <div className="flex h-full min-h-0 flex-col gap-3 p-4">
+      <div className="grid shrink-0 grid-cols-3 gap-3">
+        <Figure label="Today" value={formatMinutes(totals.focusMin)} />
         <Figure label="This week" value={formatMinutes(figures.weekMin)} />
-        <Figure label="30-day average" value={`${formatMinutes(figures.averagePerDay)}/day`} divided />
-        <Figure
-          label="Best day"
-          value={figures.best ? `${formatMinutes(figures.best.focusMin)} · ${dayMonth(figures.best.key)}` : '—'}
-          divided
-        />
-        <Figure
-          label={`Streak · ${HEAT_FILTERS.find((f) => f.id === filter)?.label}`}
-          value={`${count(figures.streak.current, 'day')} · best ${count(figures.streak.longest, 'day')}`}
-          divided
-          tip={<InfoTip label="How the runs are counted" text={streakRule(filter)} />}
-        />
+        <Figure label="Streak" value={count(figures.streak.current, 'day')} />
       </div>
 
-      {insight ? <p className="shrink-0 font-display text-lg italic text-ink-soft">{insight}</p> : null}
-
-      <section className="flex min-h-0 flex-col" aria-labelledby="activity-heatmap">
-        <div className="flex shrink-0 items-center justify-between gap-3">
-          <h2 id="activity-heatmap" className="font-text text-small font-medium text-ink">
-            Last 12 months
+      <section className="card min-h-0 flex-1" aria-labelledby="activity-month">
+        <div className="card-head">
+          <h2 id="activity-month" className="font-text text-small font-semibold text-ink">
+            Last 30 days
           </h2>
-          <Segmented label="What the heatmap measures" value={filter} onChange={setFilter} options={HEAT_FILTERS} />
         </div>
-        <div className="mt-2">
-          <Heatmap data={data} filter={filter} onPick={onPick} />
+        <div className="min-h-0 flex-1 px-2 py-2">
+          <FocusChart data={data} range="30D" />
         </div>
       </section>
 
-      <section className="flex min-h-0 flex-1 flex-col" aria-labelledby="activity-charts">
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-rule pt-2">
-          <h2 id="activity-charts" className="font-text text-small font-medium text-ink">
-            Focus time
+      <section
+        className="card h-[14rem] shrink-0"
+        aria-labelledby="activity-year"
+      >
+        <div className="card-head">
+          <h2 id="activity-year" className="font-text text-small font-semibold text-ink">
+            This year
           </h2>
-          <Segmented label="Chart range" value={range} onChange={setRange} options={RANGES} />
+          <span className="font-text text-micro text-ink-mute">Focus</span>
         </div>
-
-        <div className="mt-2 grid min-h-0 flex-1 grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-6">
-          <div className="min-h-0">
-            <FocusChart data={data} range={range} />
-          </div>
-          <div className="flex min-h-0 flex-col border-l border-rule pl-4">
-            <p className="font-text text-small font-medium text-ink">By tag</p>
-            <div className="mt-2 min-h-0 flex-1">
-              <TagChart data={data} range={range} />
-            </div>
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col px-4 pb-2 pt-2">
+          <Heatmap data={data} filter="focus" onPick={onPick} />
         </div>
       </section>
     </div>
   );
 }
 
-function Figure({
-  label,
-  value,
-  divided,
-  tip,
-}: {
-  label: string;
-  value: string;
-  divided?: boolean;
-  tip?: ReactNode;
-}) {
+function Figure({ label, value }: { label: string; value: string }) {
   return (
-    <div className={`px-4 py-2 ${divided ? 'border-l border-rule' : ''}`}>
-      <p className="label flex items-center gap-1.5 normal-case tracking-normal">
-        {label}
-        {tip}
-      </p>
-      <p className="mt-0.5 font-display text-2xl leading-tight text-ink tab">{value}</p>
+    <div className="card px-4 py-2.5">
+      <p className="label">{label}</p>
+      <p className="mt-1 font-display text-[1.6rem] font-semibold leading-none tracking-[-0.03em] text-ink tab">{value}</p>
     </div>
   );
 }

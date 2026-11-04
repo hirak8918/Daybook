@@ -31,6 +31,7 @@ import {
 } from '../src/lib/stats';
 import {
   DATA_VERSION,
+  NOTE_HTML_MAX,
   ONBOARDING_VERSION,
   defaultData,
   migrate,
@@ -125,8 +126,10 @@ describe('Schema and migrations');
 {
   const fresh = defaultData(new Date('2026-01-01T08:00:00Z'));
   eq('default document carries the current version', fresh.version, DATA_VERSION);
-  eq('the schema is version 3', DATA_VERSION, 3);
+  eq('the schema is version 4', DATA_VERSION, 4);
   check('a fresh document has no days', Object.keys(fresh.days).length === 0);
+  eq('a fresh document has an empty note sheet', fresh.notes.html, '');
+  check('the empty note still carries a timestamp', typeof fresh.notes.updatedAt === 'string');
   eq('a fresh document has no task-list anchor', fresh.meta.tasksStartAt, null);
   eq('a fresh document has no name yet', fresh.profile, undefined);
   eq('and says the greeting is still owed', fresh.onboarding?.completed, false);
@@ -186,7 +189,7 @@ describe('Schema and migrations');
     meta: { launches: 9, lastOpenedAt: '2026-02-02T09:00:00Z', seeded: true },
   };
   const upgraded = migrate(structuredClone(v1));
-  eq('v1 upgrades to v3', upgraded.version, 3);
+  eq('v1 upgrades to v4', upgraded.version, 4);
   // The Welcome screen is the one thing an upgrade does not invent: a document
   // with no name is exactly what asks the question, once.
   eq('an upgrade is not given a name', upgraded.profile, undefined);
@@ -204,7 +207,18 @@ describe('Schema and migrations');
   eq('session minutes kept', upgraded.days['2026-02-01'].sessions[0].minutes, 90);
   eq('movement kept', upgraded.days['2026-02-01'].movements[0].minutes, 40);
   eq('the daily note is kept, unused but not deleted', upgraded.days['2026-02-01'].note, 'A quiet Sunday');
+  eq('a v1 document gains an empty Home note', upgraded.notes.html, '');
   eq('no task was deleted', upgraded.days['2026-02-01'].tasks.length, 2);
+
+  // The Home note is a document-level field and survives a re-read verbatim.
+  const noted = migrate({
+    ...structuredClone(v1),
+    notes: { html: '<p><strong>Read</strong> the proofs.</p>', updatedAt: '2026-04-01T12:00:00.000Z' },
+  });
+  eq('a stored note is kept', noted.notes.html, '<p><strong>Read</strong> the proofs.</p>');
+  eq('with the moment it was edited', noted.notes.updatedAt, '2026-04-01T12:00:00.000Z');
+  const hugeNote = migrate({ ...structuredClone(v1), notes: { html: 'x'.repeat(NOTE_HTML_MAX + 500) } });
+  eq('an oversized note is clamped on read', hugeNote.notes.html.length, NOTE_HTML_MAX);
 
   // A name, once saved, survives every later read of the file.
   const named = migrate({
@@ -369,6 +383,21 @@ describe('Reducer');
   const custom = applyAction(data, { type: 'timer/set', patch: { customMinutes: 47, mode: 'custom' } });
   eq('the custom length is stored', custom.timer.customMinutes, 47);
 
+  /* ------------------------------------------------------------- notes */
+
+  eq('a document starts with an empty note', data.notes.html, '');
+  const withNote = applyAction(data, {
+    type: 'note/set',
+    html: '<p><strong>Ship</strong> the <em>redesign</em>.</p>',
+  });
+  eq('the note is stored', withNote.notes.html, '<p><strong>Ship</strong> the <em>redesign</em>.</p>');
+  check('the note is stamped when it changes', withNote.notes.updatedAt !== data.notes.updatedAt);
+  eq('the note stays out of the day records', withNote.days[today]?.note ?? '', '');
+  const hugeNote = applyAction(data, { type: 'note/set', html: 'x'.repeat(NOTE_HTML_MAX + 10) });
+  eq('the note is clamped at the boundary', hugeNote.notes.html.length, NOTE_HTML_MAX);
+  const erasedNote = applyAction(withNote, { type: 'data/reset', seed: false });
+  eq('erasing data clears the note', erasedNote.notes.html, '');
+
   const reseeded = applyAction(data, { type: 'data/reset', seed: true });
   check('reset with seed produces a back catalogue', Object.keys(reseeded.days).length > 50);
   eq('reset anchors the rolling list', reseeded.meta.tasksStartAt, today);
@@ -421,8 +450,13 @@ describe('Action validation at the IPC boundary');
   const wrongType = sanitizeAction({ type: 'profile/set-name', name: 42 }) as { name: string } | null;
   eq('a name of the wrong type survives validation nowhere', wrongType?.name, '');
   eq('removed reorder action rejected', sanitizeAction({ type: 'task/reorder', date: today, ids: [] }), null);
-  eq('removed note action rejected', sanitizeAction({ type: 'note/set', date: today, note: 'x' }), null);
+  eq('a legacy day-note action is still rejected', sanitizeAction({ type: 'note/set', date: today, note: 'x' }), null);
   eq('removed day-clear action rejected', sanitizeAction({ type: 'day/clear', date: today }), null);
+  const noteAction = sanitizeAction({ type: 'note/set', html: '<p>Hello</p>' }) as { html: string };
+  eq('the Home note action passes validation', noteAction.html, '<p>Hello</p>');
+  eq('a non-string note body is rejected', sanitizeAction({ type: 'note/set', html: 42 }), null);
+  const longNote = sanitizeAction({ type: 'note/set', html: 'x'.repeat(NOTE_HTML_MAX + 10) }) as { html: string };
+  eq('a note from the renderer is clamped', longNote.html.length, NOTE_HTML_MAX);
 
   const long = sanitizeAction({ type: 'task/add', date: today, title: 'x'.repeat(900) }) as { title: string };
   eq('task title clamped', long.title.length, 200);

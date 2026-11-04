@@ -1,59 +1,68 @@
 import { toKey } from '../lib/date';
 import { shortDay } from '../lib/format';
+import { IconActivity, IconHome, IconSettings, IconTimer } from './Icons';
 
 export type TabId = 'home' | 'timer' | 'activity' | 'settings';
 
-export const TABS: Array<{ id: TabId; label: string }> = [
-  { id: 'home', label: 'Home' },
-  { id: 'timer', label: 'Timer' },
-  { id: 'activity', label: 'Activity' },
-  { id: 'settings', label: 'Settings' },
+export const TABS: Array<{ id: TabId; label: string; Icon: typeof IconHome }> = [
+  { id: 'home', label: 'Home', Icon: IconHome },
+  { id: 'timer', label: 'Timer', Icon: IconTimer },
+  { id: 'activity', label: 'Activity', Icon: IconActivity },
+  { id: 'settings', label: 'Settings', Icon: IconSettings },
 ];
 
 /**
- * The whole chrome: one 48px row that doubles as the window drag region, the
- * tab strip and the date line. Windows keeps drawing its own minimise /
- * maximise / close buttons in the title-bar overlay, so the right-hand end of
- * this row is left clear for them.
+ * The left rail. It carries the wordmark, the four sections and nothing else.
+ * Its 48px top row is part of the window drag region; the buttons themselves
+ * are explicitly no-drag so a click never turns into a window move.
  */
-export function AppHeader({ tab, onTab }: { tab: TabId; onTab: (id: TabId) => void }) {
+export function AppSidebar({ tab, onTab }: { tab: TabId; onTab: (id: TabId) => void }) {
   return (
-    <header
-      className="drag flex h-bar shrink-0 items-stretch border-b border-rule bg-paper"
-      style={{ paddingRight: '8.75rem' }}
-    >
-      <div className="flex items-center pl-4 pr-5">
-        <span className="font-display text-word font-semibold tracking-tight text-ink">Daybook</span>
+    <aside className="flex w-[10.5rem] shrink-0 flex-col border-r border-rule bg-paper-deep">
+      <div className="drag flex h-12 shrink-0 items-center px-5">
+        <span className="font-display text-word font-semibold tracking-[-0.02em] text-ink">
+          Daybook<span className="text-accent">.</span>
+        </span>
       </div>
 
-      <nav aria-label="Sections" className="no-drag flex items-stretch">
-        {TABS.map((entry) => {
-          const active = entry.id === tab;
+      <nav aria-label="Sections" className="no-drag flex flex-col gap-0.5 px-2.5 pt-3">
+        {TABS.map(({ id, label, Icon }) => {
+          const active = id === tab;
           return (
             <button
-              key={entry.id}
+              key={id}
               type="button"
-              onClick={() => onTab(entry.id)}
+              onClick={() => onTab(id)}
               aria-current={active ? 'page' : undefined}
-              className={`relative flex items-center px-3 font-text text-small transition-colors ${
-                active ? 'text-ink' : 'text-ink-mute hover:text-ink'
+              className={`flex h-10 items-center gap-2.5 rounded-control px-2.5 text-left font-text text-small transition-colors ${
+                active
+                  ? 'bg-paper-raise text-ink shadow-soft'
+                  : 'text-ink-soft hover:bg-paper-raise/70 hover:text-ink'
               }`}
             >
-              {entry.label}
-              <span
-                aria-hidden
-                className={`absolute inset-x-2 bottom-0 h-[2px] origin-left bg-accent transition-transform duration-150 ${
-                  active ? 'scale-x-100' : 'scale-x-0'
-                }`}
-              />
+              <Icon size={17} className={active ? 'text-accent' : 'text-ink-mute'} />
+              <span className="min-w-0 flex-1 truncate">{label}</span>
+              {active ? <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" /> : null}
             </button>
           );
         })}
       </nav>
+    </aside>
+  );
+}
 
-      <div className="no-drag ml-auto flex items-center pr-2">
-        <span className="meta">{shortDay(toKey())}</span>
-      </div>
+/**
+ * The content's 48px title row. It is the rest of the window drag region, and
+ * it stops short of the Windows caption buttons on the right.
+ */
+export function PageBar({ title }: { title: string }) {
+  return (
+    <header
+      className="drag flex h-12 shrink-0 items-center justify-between gap-6 border-b border-rule bg-paper pl-5"
+      style={{ paddingRight: '8.75rem' }}
+    >
+      <h1 className="truncate font-display text-[1.0625rem] font-semibold tracking-[-0.02em] text-ink">{title}</h1>
+      <span className="hidden shrink-0 font-text text-micro text-ink-mute sm:block">{shortDay(toKey())}</span>
     </header>
   );
 }

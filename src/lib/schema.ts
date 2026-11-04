@@ -16,12 +16,20 @@
  * v3 (Daybook 1.2.0) added `profile` and `onboarding` for the Welcome screen.
  * Both are optional and purely additive: a document with no `profile.name` is
  * one that has never been greeted, which is exactly what the renderer looks at.
+ *
+ * v4 (Daybook 2.0.0) added the single rich-text note sheet that lives on Home.
+ * It is one document-level field, not a per-day note: the sheet is a scratchpad
+ * that stays put while the days change underneath it. The old per-day `note`
+ * strings are still preserved untouched.
  */
 
 import { toKey } from './date';
 import { cleanName, nameError } from './name';
 
-export const DATA_VERSION = 3;
+export const DATA_VERSION = 4;
+
+/** The note sheet is a scratchpad, not an archive: cap the stored markup. */
+export const NOTE_HTML_MAX = 200_000;
 
 /** The Welcome payload's own version, so a future redesign can ask again. */
 export const ONBOARDING_VERSION = 1;
@@ -147,11 +155,19 @@ export interface OnboardingState {
   version: number;
 }
 
+/** The Home note sheet. HTML is produced by the editor's constrained schema. */
+export interface NoteSheet {
+  html: string;
+  updatedAt: string;
+}
+
 export interface DaybookData {
   version: number;
   /** ISO datetime of first launch. */
   createdAt: string;
   settings: Settings;
+  /** The single Home note. Empty until the owner writes something. */
+  notes: NoteSheet;
   days: Record<string, DayRecord>;
   timer: TimerState;
   /** Absent until the owner has named themselves on the Welcome screen. */
@@ -222,6 +238,7 @@ export function defaultData(now = new Date()): DaybookData {
     version: DATA_VERSION,
     createdAt: iso,
     settings: structuredCloneSafe(DEFAULT_SETTINGS),
+    notes: { html: '', updatedAt: iso },
     days: {},
     timer: defaultTimer(),
     meta: { launches: 0, lastOpenedAt: iso, seeded: false, tasksStartAt: null },
@@ -291,6 +308,10 @@ const MIGRATIONS: Record<number, Migration> = {
   // `profile.name`, so inventing one here would rob upgrading owners of the one
   // greeting they are owed. Everything else about the document is untouched.
   2: (data) => ({ ...data, version: 3 }),
+
+  // 3 → 4 (Daybook 2.0.0): the Home note sheet. Additive: the sanitizer below
+  // gives older documents an empty sheet, and no history is rewritten.
+  3: (data) => ({ ...data, version: 4 }),
 };
 
 /**
@@ -468,10 +489,16 @@ export function migrate(raw: unknown): DaybookData {
   const rawMeta = (data.meta ?? {}) as Partial<DaybookData['meta']>;
   const createdAt = typeof data.createdAt === 'string' ? data.createdAt : base.createdAt;
   const profile = sanitizeProfile(data.profile, createdAt);
+  const rawNotes = (data.notes ?? {}) as Partial<NoteSheet>;
+  const notes: NoteSheet = {
+    html: typeof rawNotes.html === 'string' ? rawNotes.html.slice(0, NOTE_HTML_MAX) : '',
+    updatedAt: typeof rawNotes.updatedAt === 'string' ? rawNotes.updatedAt : createdAt,
+  };
   return {
     version: DATA_VERSION,
     createdAt,
     settings: mergeSettings(data.settings),
+    notes,
     days,
     timer,
     meta: {

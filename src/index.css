@@ -13,75 +13,61 @@
  * ------------------------------------------------------------------ */
 
 :root {
-  --paper: 244 239 230;
-  --paper-deep: 235 228 214;
-  --paper-raise: 250 247 240;
-  --ink: 22 20 18;
-  --ink-soft: 61 55 47;
-  --ink-mute: 106 98 86;
-  --ink-faint: 160 150 134;
-  --rule: 213 202 182;
-  --rule-strong: 184 169 144;
-  --accent: 200 40 18;
-  --accent-deep: 168 33 15;
-  --accent-wash: 247 223 214;
-  --accent-ink: 255 250 246;
-  --ochre: 150 102 22;
-  --olive: 88 96 52;
-  --grain-opacity: 0.05;
+  --paper: 246 244 239;
+  --paper-deep: 238 235 228;
+  --paper-raise: 255 255 255;
+  --ink: 23 22 20;
+  --ink-soft: 70 67 61;
+  --ink-mute: 105 101 94;
+  --ink-faint: 158 152 142;
+  --rule: 228 224 215;
+  --rule-strong: 198 193 183;
+  --accent: 36 80 216;
+  --accent-deep: 28 63 180;
+  --accent-wash: 232 237 255;
+  --accent-ink: 255 255 255;
+  --ochre: 151 105 26;
+  --olive: 92 103 55;
   color-scheme: light;
 }
 
 .dark {
-  --paper: 20 18 16;
-  --paper-deep: 12 11 10;
-  --paper-raise: 30 27 24;
-  --ink: 241 234 223;
-  --ink-soft: 214 206 193;
-  --ink-mute: 176 167 152;
-  --ink-faint: 122 114 102;
-  --rule: 58 52 45;
-  --rule-strong: 96 87 76;
-  --accent: 244 88 58;
-  --accent-deep: 255 128 100;
-  --accent-wash: 66 30 22;
-  --accent-ink: 26 12 8;
+  --paper: 18 18 18;
+  --paper-deep: 13 13 13;
+  --paper-raise: 28 28 28;
+  --ink: 242 240 234;
+  --ink-soft: 206 202 194;
+  --ink-mute: 160 155 146;
+  --ink-faint: 108 104 97;
+  --rule: 45 45 43;
+  --rule-strong: 74 73 69;
+  --accent: 122 150 255;
+  --accent-deep: 155 176 255;
+  --accent-wash: 30 40 72;
+  --accent-ink: 12 16 30;
   --ochre: 210 162 74;
   --olive: 168 178 116;
-  --grain-opacity: 0.055;
   color-scheme: dark;
 }
 
-/* ------------------------------------------------------------------ *
- * The Welcome page
- *
- * The first page is always printed on cream paper, whatever edition the app
- * behind it will open in: it is a title page, not a theme preview. Every token
- * the page uses is pinned here so a dark-theme owner and a light-theme owner
- * get the same first run — and so the page can be measured without depending
- * on the operating system's appearance.
- *
- * Declared outside @layer on purpose: inside it, the theme blocks above would
- * win on order alone.
- * ------------------------------------------------------------------ */
-
+/* The first page is always printed on the light shelf, whatever edition the
+   app behind it will open in. Pinned here, outside @layer, so the theme block
+   cannot win on order alone. */
 .welcome {
-  --paper: 244 239 230;
-  --paper-deep: 235 228 214;
-  --paper-raise: 250 247 240;
-  --ink: 22 20 18;
-  --ink-soft: 61 55 47;
-  --ink-mute: 106 98 86;
-  --ink-faint: 160 150 134;
-  --rule: 213 202 182;
-  --rule-strong: 184 169 144;
-  --accent: 200 40 18;
-  --accent-deep: 168 33 15;
-  --accent-wash: 247 223 214;
-  --accent-ink: 255 250 246;
-  --ochre: 150 102 22;
-  --olive: 88 96 52;
-  --grain-opacity: 0.05;
+  --paper: 246 244 239;
+  --paper-deep: 238 235 228;
+  --paper-raise: 255 255 255;
+  --ink: 23 22 20;
+  --ink-soft: 70 67 61;
+  --ink-mute: 105 101 94;
+  --ink-faint: 158 152 142;
+  --rule: 228 224 215;
+  --rule-strong: 198 193 183;
+  --accent: 36 80 216;
+  --accent-deep: 28 63 180;
+  --accent-wash: 232 237 255;
+  --accent-ink: 255 255 255;
+  --ochre: 151 105 26;
 }
 
 /* ------------------------------------------------------------------ *
@@ -101,8 +87,6 @@
   }
 
   html {
-    /* Windows ClearType: keep subpixel rendering ON (never `antialiased`),
-       and never rasterise text inside a transform. */
     -webkit-font-smoothing: auto;
     text-size-adjust: 100%;
     scrollbar-width: thin;
@@ -122,7 +106,6 @@
   h4 {
     @apply font-display text-ink;
     font-optical-sizing: auto;
-    font-variation-settings: 'SOFT' 0, 'WONK' 1;
     text-wrap: balance;
   }
 
@@ -138,7 +121,7 @@
   :focus-visible {
     outline: 2px solid rgb(var(--accent));
     outline-offset: 2px;
-    border-radius: 1px;
+    border-radius: 3px;
   }
 
   :focus:not(:focus-visible) {
@@ -164,7 +147,6 @@
     margin: 0;
   }
 
-  /* Thin, editorial scrollbars — used only by the Day dialog. */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -178,7 +160,7 @@
     background-color: rgb(var(--rule-strong));
     background-clip: content-box;
     border: 3px solid transparent;
-    border-radius: 0;
+    border-radius: 999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -189,7 +171,6 @@
     background: transparent;
   }
 
-  /* Windows "Animation effects: off" stops everything. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -207,23 +188,6 @@
  * ------------------------------------------------------------------ */
 
 @layer components {
-  /* Paper grain: an inline SVG noise field, no network, no image asset. */
-  .grain::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 60;
-    opacity: var(--grain-opacity);
-    mix-blend-mode: multiply;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
-  .dark .grain::after {
-    mix-blend-mode: screen;
-  }
-
-  /* One divider colour, used everywhere. */
   .rule-b {
     @apply border-b border-rule;
   }
@@ -232,15 +196,11 @@
     @apply border-t border-rule;
   }
 
-  /* Small uppercase mono labels — never sentences, hints or buttons. */
+  /* Small supporting labels: plain words, never tracked-out uppercase. */
   .label {
-    @apply font-mono text-label uppercase text-ink-mute;
-    font-feature-settings: 'tnum' 1;
+    @apply font-text text-micro font-medium text-ink-mute;
   }
 
-  /* Metadata and field captions: the body face at caption size. Mono is kept
-     for things you read as data (the clock, axis ticks, shortcuts, counters) —
-     never for a sentence, so the two faces have one job each. */
   .meta {
     @apply font-text text-micro text-ink-mute;
   }
@@ -256,33 +216,29 @@
   }
 
   /* ---------------------------------------------------------------- *
-   * Buttons: exactly three styles.
-   *   .btn          secondary — a plain outline, filled in on hover
+   * Buttons: three styles, one rounded rectangle.
+   *   .btn          secondary
    *   .btn-primary  the one accent action on a screen
-   *   .btn-text     a label with a sliding rule, for tertiary actions
-   * Sentence case, plain words, never tracked-out uppercase.
+   *   .btn-text     a label with a sliding rule
    * ---------------------------------------------------------------- */
 
   .btn {
-    @apply relative inline-flex select-none items-center justify-center gap-2 border border-ink bg-paper px-4 font-text text-small text-ink transition-colors duration-150;
-    min-height: 2.5rem; /* 40px hit target: touch and pen friendly */
+    @apply relative inline-flex select-none items-center justify-center gap-2 rounded-control border border-rule-strong bg-paper-raise px-4 font-text text-small text-ink transition-colors duration-150;
+    min-height: 2.375rem;
   }
   .btn:hover:not(:disabled) {
     @apply bg-paper-deep;
   }
   .btn:active:not(:disabled) {
-    @apply bg-rule;
     transform: translateY(1px);
   }
   .btn:disabled {
-    @apply cursor-not-allowed border-rule-strong text-ink-mute;
+    @apply cursor-not-allowed border-rule text-ink-mute;
   }
 
   .btn-primary {
     @apply border-accent bg-accent text-accent-ink;
   }
-  /* A disabled primary must stay readable: the fill steps back to the wash,
-     never vermilion with washed-out ink on top of it. */
   .btn-primary:disabled {
     @apply border-rule-strong bg-accent-wash text-accent-deep;
   }
@@ -322,52 +278,49 @@
     display: none;
   }
 
-  /* Text inputs styled as ruled paper. */
+  /* Text inputs: a quiet boxed field, one pixel of rule, a soft accent ring. */
   .field {
-    @apply w-full border-0 border-b border-rule-strong bg-transparent px-0 py-1.5 font-text text-body text-ink placeholder:text-ink-mute;
-    min-height: 2.5rem;
+    @apply w-full rounded-control border border-rule-strong bg-paper-raise px-3 py-1.5 font-text text-small text-ink placeholder:text-ink-mute;
+    min-height: 2.375rem;
   }
   .field:focus {
     outline: none;
-    border-bottom-color: rgb(var(--accent));
-    box-shadow: 0 1px 0 0 rgb(var(--accent));
+    border-color: rgb(var(--accent));
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.13);
   }
   .field:disabled {
     @apply text-ink-mute;
   }
 
-  /* Number fields in Settings keep a visible box so the clamp is obvious. */
   .numfield {
-    @apply w-[4.75rem] border border-rule-strong bg-paper-raise px-2 py-0.5 font-mono text-small tabular-nums text-ink;
+    @apply w-[4.75rem] rounded-[7px] border border-rule-strong bg-paper-raise px-2 py-0.5 font-mono text-small tabular-nums text-ink;
     min-height: 2rem;
   }
   .numfield:focus {
     outline: none;
     border-color: rgb(var(--accent));
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.13);
   }
 
-  /* The same box for the one text field in Settings (the owner's name). */
   .namefield {
-    @apply w-[9.5rem] border border-rule-strong bg-paper-raise px-2 py-0.5 font-text text-small text-ink;
+    @apply w-[9.5rem] rounded-[7px] border border-rule-strong bg-paper-raise px-2 py-0.5 font-text text-small text-ink;
     min-height: 2rem;
   }
   .namefield:focus {
     outline: none;
     border-color: rgb(var(--accent));
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.13);
   }
 
-  /* The Welcome field's rule is ink at rest and accent on focus; this keeps the
-     underline from flickering a pixel wider when the colour changes. */
   .welcome-field {
     box-shadow: 0 0 0 0 rgb(var(--accent) / 0);
-    transition: border-color 180ms ease, box-shadow 180ms ease;
   }
   .welcome-field:focus-within {
-    box-shadow: 0 1px 0 0 rgb(var(--accent) / 0.35);
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.13);
   }
 
   .chip {
-    @apply inline-flex items-center gap-1.5 border border-rule-strong bg-paper px-2.5 font-text text-small text-ink-soft transition-colors;
+    @apply inline-flex items-center gap-1.5 rounded-control border border-rule-strong bg-paper-raise px-2.5 font-text text-small text-ink-soft transition-colors;
     min-height: 2rem;
   }
   .chip:hover:not(:disabled) {
@@ -377,9 +330,8 @@
     @apply border-accent bg-accent-wash text-accent-deep;
   }
 
-  /* Segmented control: Pomodoro|Custom, filters, ranges, theme. */
   .seg {
-    @apply inline-flex select-none items-stretch border border-rule-strong;
+    @apply inline-flex select-none items-stretch overflow-hidden rounded-control border border-rule-strong bg-paper-raise;
   }
   .seg > button {
     @apply border-0 bg-transparent px-3 py-1 font-text text-small text-ink-soft transition-colors;
@@ -392,78 +344,57 @@
     @apply bg-paper-deep text-ink;
   }
   .seg > button[aria-pressed='true'] {
-    @apply bg-ink text-paper;
+    @apply bg-accent text-accent-ink;
   }
   .seg > button:disabled {
     @apply cursor-not-allowed text-ink-mute;
   }
 
-  /* Cards: a bordered block, no shadow, no radius. Sized to fit two rows of
-     them on a 600px-tall window without scrolling. */
   .card {
-    @apply flex min-h-0 flex-col overflow-hidden border border-rule bg-paper-raise;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5);
-  }
-  .dark .card {
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
+    @apply flex min-h-0 flex-col overflow-hidden rounded-card border border-rule bg-paper-raise shadow-soft;
   }
   .card-head {
-    @apply flex shrink-0 items-center justify-between gap-2 border-b border-rule px-3 py-1.5;
+    @apply flex shrink-0 items-center justify-between gap-2 border-b border-rule px-4 py-2.5;
   }
   .card-body {
-    @apply min-h-0 flex-1 px-3 py-2;
+    @apply min-h-0 flex-1 px-4 py-3;
   }
 
-  /* Home's headline figures grow with the window height. A fixed size left a
-     tall card holding a small number at 1080p, with dead space all around it. */
-  .metric-fluid {
-    font-size: clamp(3rem, 8.5vh, 7.5rem);
-    line-height: 0.95;
-    letter-spacing: -0.035em;
-  }
-
-  /* Column headings on Home: a label and a rule above the figure. */
-  .column-head {
-    @apply flex items-baseline justify-between gap-3 border-b border-ink pb-1.5;
-  }
-
-  /* Rows that gain a left rule and shift slightly on hover. */
+  /* Rows that lift a little on hover, without moving the text. */
   .entry {
     @apply relative transition-colors duration-150;
   }
-  .entry::before {
-    content: '';
-    position: absolute;
-    left: -0.6rem;
-    top: 0.05rem;
-    bottom: 0.05rem;
-    width: 2px;
-    background: rgb(var(--accent));
-    transform: scaleY(0);
-    transform-origin: top;
-    transition: transform 150ms cubic-bezier(0.16, 0.84, 0.44, 1);
-  }
-  .entry:hover::before,
-  .entry:focus-within::before {
-    transform: scaleY(1);
-  }
-  .entry:hover {
-    transform: translateX(3px);
+  .entry:hover,
+  .entry:focus-within {
+    @apply bg-paper-deep;
   }
 
-  /* Heatmap cells: five intensity levels of the accent, one per goal band. */
+  .metric-fluid {
+    font-size: clamp(3rem, 8.5vh, 7.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+  }
+
+  .column-head {
+    @apply flex items-baseline justify-between gap-3 border-b border-rule pb-1.5;
+  }
+
   .heat-cell {
-    @apply block aspect-square w-full border border-rule;
+    display: block;
+    aspect-ratio: 1;
+    width: 100%;
+    border: 0;
+    border-radius: 2px;
     background: rgb(var(--paper-deep));
   }
   .heat-cell[data-level='1'] {
-    background: rgb(var(--accent) / 0.28);
+    background: rgb(var(--accent) / 0.26);
   }
   .heat-cell[data-level='2'] {
-    background: rgb(var(--accent) / 0.48);
+    background: rgb(var(--accent) / 0.46);
   }
   .heat-cell[data-level='3'] {
-    background: rgb(var(--accent) / 0.72);
+    background: rgb(var(--accent) / 0.7);
   }
   .heat-cell[data-level='4'] {
     background: rgb(var(--accent) / 1);
@@ -473,13 +404,51 @@
     outline-offset: 1px;
   }
 
-  /* The one dashed rule used by charts: the daily goal. */
   .dash-accent {
     background-image: repeating-linear-gradient(
       to right,
       rgb(var(--accent)) 0 6px,
       transparent 6px 12px
     );
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Note editor
+   * ---------------------------------------------------------------- */
+
+  .note-editor .note-prose {
+    min-height: 100%;
+    outline: none;
+    font-family: Geist, Verdana, Tahoma, sans-serif;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: rgb(var(--ink));
+    overflow-wrap: anywhere;
+  }
+
+  .note-prose p {
+    margin: 0 0 0.7em;
+  }
+
+  .note-prose p:last-child {
+    margin-bottom: 0;
+  }
+
+  .note-prose p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: rgb(var(--ink-mute));
+    pointer-events: none;
+  }
+
+  .note-prose strong {
+    font-weight: 600;
+  }
+
+  .note-prose ::selection {
+    background: rgb(var(--accent) / 0.22);
+    color: rgb(var(--ink));
   }
 }
 
@@ -488,17 +457,13 @@
  * ------------------------------------------------------------------ */
 
 @media (forced-colors: active) {
-  :root,
-  .dark {
-    --grain-opacity: 0;
-  }
-  .grain::after {
-    display: none;
-  }
   .btn,
   .chip,
   .card,
-  .seg {
+  .seg,
+  .field,
+  .numfield,
+  .namefield {
     border: 1px solid CanvasText;
     box-shadow: none;
     forced-color-adjust: none;

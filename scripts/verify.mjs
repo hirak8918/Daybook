@@ -5,10 +5,11 @@
  *
  * Launches the *built* app (dist + dist-electron, i.e. exactly what the
  * installer ships), drives it over the Chrome DevTools Protocol and checks the
- * release checklist: four tabs, "one screen, no scroll" at every supported
- * window size and display scaling, the rolling task cap, both timer modes,
- * the heatmap and its day dialog, the charts, Settings autosave and clamps, the
- * erase confirmation, and a clean console.
+ * 2.0 release checklist: the one-question Welcome screen, the Home note editor
+ * and its formatting, the rolling task cap, both timer modes, the simplified
+ * Activity tab, Settings clamps and the erase confirmation, "one screen, no
+ * scroll" at every supported window size, the v3 → v4 upgrade, and a clean
+ * console.
  *
  * It restores anything it changes and never confirms a destructive dialog.
  * Node 22+ has a global WebSocket, so there are no dependencies.
@@ -26,8 +27,9 @@ const KEEP_OPEN = process.argv.includes('--keep-open');
 // covered, Windows reports it occluded and Chromium stops painting — useful for
 // reproducing that state on purpose.
 const NO_RAISE = process.argv.includes('--no-raise');
-// `--shots <dir>` writes one PNG per tab so the result can be eyeballed, and
-// `--shot-size 1920x1080` chooses the capture size (default 1280x720).
+// `--shots <dir>` writes one PNG per tab (and the Welcome screen) so the result
+// can be eyeballed, and `--shot-size 1920x1080` chooses the capture size
+// (default 1280x720).
 const SHOTS = readFlag('--shots');
 const SHOT_SIZE = (readFlag('--shot-size') ?? '1280x720').split('x').map(Number);
 
@@ -378,112 +380,52 @@ function census(data) {
 
 try {
   /* ================================================================== *
-   * Phase 1 — a fresh install: the Welcome screen, in full.
+   * Phase 1 — fresh install and the new first page.
    * ================================================================== */
 
   const freshDir = scratchDir('fresh');
   await beginSession({ DAYBOOK_DATA_DIR: freshDir });
   check('the harness can see the renderer (error traps + poll installed)', (await page('typeof window.__wait')) === 'function');
 
-  // Printed, not asserted: whether the window is drawing frames decides how
-  // every later interaction behaves, and that is the environment's business.
-  const liveness = await page(
-    `(async () => {
-      const before = {
-        visibility: document.visibilityState,
-        focus: document.hasFocus(),
-        viewport: window.innerWidth + 'x' + window.innerHeight,
-      };
-      const frames = await Promise.race([
-        new Promise((r) => requestAnimationFrame(() => r(true))),
-        new Promise((r) => setTimeout(() => r(false), 2000)),
-      ]);
-      return { ...before, frames };
-    })()`,
-    20_000,
-  );
-  console.log(`\u001b[2mrenderer: ${JSON.stringify(liveness)}\u001b[0m`);
-
-  /* ------------------------------------------------------- welcome */
-  // The title page: cream paper, a hairline grid, one outlined edition number
-  // and a seal that turns. Measured at the reference canvas (1536×1024) and
-  // again at the 1000×600 minimum, where everything is closest together.
-  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1536, height: 1024, deviceScaleFactor: 1, mobile: false });
-  await sleep(500);
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await sleep(450);
 
   const welcome = await page(`(() => {
     const layer = document.querySelector('#daybook-welcome');
-    const noBox = { x: -999, y: -999, w: 0, h: 0, right: -999, cy: -999, cx: -999 };
-    if (!layer) return {
-      present: false, viewport: [window.innerWidth, window.innerHeight], header: true, tabs: true,
-      headingText: null, headingColors: [], headingSize: 0, headingWeight: '0', headingFont: '',
-      headingWrap: '', headingAlign: '', headingLines: 0, headingEdges: false,
-      headingBox: noBox, fieldBox: noBox,
-      fieldBorder: '', fieldBorderWidth: 0, fieldRadius: 0,
-      inputFont: '', inputSize: 0, inputPad: 0, inputCaret: '', inputPlaceholder: null, inputLabel: null,
-      focused: false, buttonBox: noBox, buttonFill: '', buttonRadius: 0, arrow: null,
-      seal: null, images: 0, strip: null, drags: false, overCaption: null,
-      scrolls: 0, docScroll: [0, 0], scrollables: 0, background: '',
-    };
-    const round = (n) => Math.round(n * 100) / 100;
-    const style = (el) => getComputedStyle(el);
-    const box = (el) => {
-      const r = el.getBoundingClientRect();
-      return { x: round(r.x), y: round(r.y), w: round(r.width), h: round(r.height), right: round(r.right), cy: round(r.y + r.height / 2), cx: round(r.x + r.width / 2) };
-    };
+    if (!layer) return { present: false };
     const heading = document.getElementById('welcome-heading');
     const field = layer.querySelector('.welcome-field');
     const input = layer.querySelector('input[aria-label="Your name"]');
     const button = layer.querySelector('button[aria-label="Continue"]');
-    const seal = layer.querySelector('.welcome-seal');
     const strip = layer.querySelector('.drag');
-    const svg = button ? button.querySelector('svg') : null;
+    const box = (el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), right: Math.round(r.right), bottom: Math.round(r.bottom) }; };
+    const style = (el) => getComputedStyle(el);
     const hs = heading ? style(heading) : null;
     return {
       present: true,
-      viewport: [window.innerWidth, window.innerHeight],
-      header: Boolean(document.querySelector('header')),
-      tabs: Boolean(document.querySelector('nav[aria-label="Sections"]')),
-      headingText: heading ? heading.textContent.replace(/\\s+/g, ' ').trim() : null,
-      headingColors: heading ? [...heading.querySelectorAll('span')].map((s) => style(s).color) : [],
-      headingBox: heading ? box(heading) : noBox,
-      headingSize: hs ? round(parseFloat(hs.fontSize)) : 0,
+      heading: heading ? heading.textContent.replace(/\\s+/g, ' ').trim() : null,
+      headingSize: hs ? parseFloat(hs.fontSize) : 0,
       headingWeight: hs ? hs.fontWeight : '0',
       headingFont: hs ? hs.fontFamily : '',
-      headingWrap: hs ? hs.textWrap : '',
-      headingAlign: hs ? hs.textAlign : '',
-      headingLines: heading ? Math.round(heading.getBoundingClientRect().height / parseFloat(hs.lineHeight)) : 0,
-      headingEdges: heading ? heading.getBoundingClientRect().left > 0 && heading.getBoundingClientRect().right < window.innerWidth : false,
-      fieldBox: field ? box(field) : noBox,
-      fieldBorder: field ? style(field).borderBottomColor : '',
-      fieldBorderWidth: field ? round(parseFloat(style(field).borderBottomWidth)) : 0,
-      fieldRadius: field ? round(parseFloat(style(field).borderBottomLeftRadius)) : 0,
-      inputFont: input ? style(input).fontFamily : '',
-      inputSize: input ? round(parseFloat(style(input).fontSize)) : 0,
-      inputPad: input ? round(parseFloat(style(input).paddingLeft)) : 0,
-      inputCaret: input ? style(input).caretColor : '',
+      headingBox: heading ? box(heading) : null,
+      fieldBox: field ? box(field) : null,
+      fieldRadius: field ? parseFloat(style(field).borderTopLeftRadius) : 0,
+      fieldBorder: field ? style(field).borderTopColor : '',
+      inputSize: input ? parseFloat(style(input).fontSize) : 0,
       inputPlaceholder: input ? input.getAttribute('placeholder') : null,
       inputLabel: input ? input.getAttribute('aria-label') : null,
       focused: document.activeElement === input,
-      buttonBox: button ? box(button) : noBox,
       buttonFill: button ? style(button).backgroundColor : '',
-      buttonRadius: button ? round(parseFloat(style(button).borderTopLeftRadius)) : 0,
-      arrow: svg ? { size: round(svg.getBoundingClientRect().width), stroke: svg.getAttribute('stroke-width') } : null,
-      seal: seal ? {
-        w: round(seal.getBoundingClientRect().width),
-        textPath: Boolean(seal.querySelector('textPath')),
-        transform: style(seal).transform,
-      } : null,
+      buttonBox: button ? box(button) : null,
       images: layer.querySelectorAll('img').length,
-      strip: strip ? { h: round(strip.getBoundingClientRect().height), right: round(strip.getBoundingClientRect().right) } : null,
-      drags: (() => {
-        const el = document.elementFromPoint(300, 24);
-        return Boolean(el && el.closest('.drag'));
-      })(),
-      overCaption: (() => {
-        const el = document.elementFromPoint(window.innerWidth - 70, 24);
-        return el ? Boolean(el.closest && el.closest('.drag')) : null;
-      })(),
+      seal: layer.querySelectorAll('.welcome-seal').length,
+      header: Boolean(document.querySelector('header')),
+      aside: Boolean(document.querySelector('aside')),
+      strip: strip ? { h: Math.round(strip.getBoundingClientRect().height), right: Math.round(strip.getBoundingClientRect().right) } : null,
+      drags: Boolean(document.elementFromPoint(300, 24)?.closest?.('.drag')),
+      overCaption: Boolean(document.elementFromPoint(window.innerWidth - 70, 24)?.closest?.('.drag')),
+      background: style(layer).backgroundColor,
+      text: layer.innerText.replace(/\\s+/g, ' ').trim(),
       scrolls: layer.scrollHeight - layer.clientHeight,
       docScroll: [document.documentElement.scrollHeight - window.innerHeight, document.documentElement.scrollWidth - window.innerWidth],
       scrollables: [...layer.querySelectorAll('*')].filter((el) => {
@@ -491,142 +433,32 @@ try {
         const can = /(auto|scroll)/.test(s.overflowY) || /(auto|scroll)/.test(s.overflowX);
         return can && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1);
       }).length,
-      background: style(layer).backgroundColor,
     };
   })()`);
 
   check('a fresh install opens the Welcome screen', welcome.present === true, welcome);
-  check('the app header and the four tabs are hidden while it is up', welcome.present && !welcome.header && !welcome.tabs, welcome);
+  check('no shell chrome is rendered behind it', welcome.present && !welcome.header && !welcome.aside, welcome);
+  check('the page asks one question', welcome.heading === 'What should we call you?', welcome.heading);
   check(
-    'the title page is the two-tone question',
-    welcome.headingText === 'What shall we call you, Knight?' && welcome.headingColors.length === 2,
-    { text: welcome.headingText, colors: welcome.headingColors },
-  );
-  check(
-    'ink first, then the word “Knight?” in the accent',
-    welcome.headingColors[0] === 'rgb(22, 20, 18)' && welcome.headingColors[1] === 'rgb(200, 40, 18)',
-    welcome.headingColors,
-  );
-  check(
-    'the heading is Fraunces at regular weight, 30–70px',
-    /Fraunces/.test(welcome.headingFont) && welcome.headingWeight === '400' && welcome.headingSize >= 30 && welcome.headingSize <= 70,
+    'the question is Geist, 34–58px, semibold',
+    /Geist/.test(welcome.headingFont) && welcome.headingWeight === '600' && welcome.headingSize >= 34 && welcome.headingSize <= 58,
     { font: welcome.headingFont, weight: welcome.headingWeight, size: welcome.headingSize },
   );
-  check(
-    'the heading is left-aligned, balanced and clear of the middle',
-    (welcome.headingAlign === 'left' || welcome.headingAlign === 'start') &&
-      welcome.headingWrap === 'balance' && welcome.headingEdges &&
-      welcome.headingBox.x > 20 && welcome.headingBox.right < welcome.viewport[0] * 0.7,
-    { align: welcome.headingAlign, wrap: welcome.headingWrap, box: welcome.headingBox, viewport: welcome.viewport },
-  );
-  check(
-    'it sits in the upper half of the page',
-    welcome.headingBox.cy > welcome.viewport[1] * 0.3 && welcome.headingBox.cy < welcome.viewport[1] * 0.57 &&
-      welcome.headingBox.cx < welcome.viewport[0] * 0.45,
-    welcome.headingBox,
-  );
-  check(
-    'the ruled field starts on the heading’s left edge, below it',
-    Math.abs(welcome.fieldBox.x - welcome.headingBox.x) <= 2 &&
-      welcome.fieldBox.y > welcome.headingBox.y + welcome.headingBox.h,
-    { field: welcome.fieldBox, heading: welcome.headingBox },
-  );
-  check(
-    'the field is a 50–70px rule, 340–620px wide, square-cornered',
-    welcome.fieldBox.h >= 50 && welcome.fieldBox.h <= 70 &&
-      welcome.fieldBox.w >= 340 && welcome.fieldBox.w <= 620 &&
-      welcome.fieldRadius === 0,
-    welcome.fieldBox,
-  );
-  // Painted widths are device-pixel snapped (1.5px arrives as 0.8px at 125%
-  // scaling), so the painted box is checked only for being visible and the
-  // authored 1.5px is read back from the stylesheet.
-  const ruleWidths = await page(`(() => {
-    const widths = [];
-    for (const sheet of document.styleSheets) {
-      let rules = [];
-      try { rules = [...sheet.cssRules]; } catch (e) { continue; }
-      for (const entry of rules) {
-        if (!entry.style) continue;
-        for (const prop of ['borderWidth', 'borderBottomWidth']) {
-          const width = entry.style[prop];
-          if (width && widths.indexOf(width) === -1) widths.push(width);
-        }
-      }
-    }
-    return widths;
-  })()`);
-  check(
-    'the rule is ink at rest, 1.5px authored',
-    welcome.fieldBorder === 'rgb(22, 20, 18)' &&
-      welcome.fieldBorderWidth > 0.5 &&
-      ruleWidths.indexOf('1.5px') > -1,
-    { painted: welcome.fieldBorderWidth, color: welcome.fieldBorder, widths: ruleWidths },
-  );
-  check(
-    'the name takes 21–30px Geist, flush left',
-    welcome.inputSize >= 21 && welcome.inputSize <= 30 && welcome.inputPad === 0 && /Geist/.test(welcome.inputFont),
-    { size: welcome.inputSize, pad: welcome.inputPad, font: welcome.inputFont },
-  );
-  check('the caret is the accent colour', welcome.inputCaret === 'rgb(200, 40, 18)', welcome.inputCaret);
-  check(
-    'the field is labelled and deliberately empty',
-    welcome.inputLabel === 'Your name' && welcome.inputPlaceholder === null,
-    { label: welcome.inputLabel, placeholder: welcome.inputPlaceholder },
-  );
+  check('the field is labelled and deliberately empty', welcome.inputLabel === 'Your name' && welcome.inputPlaceholder === 'Your name', {
+    label: welcome.inputLabel,
+    placeholder: welcome.inputPlaceholder,
+  });
+  check('the field is a rounded, bordered box', welcome.fieldRadius >= 10 && welcome.fieldBox.w >= 380, welcome.fieldBox);
+  check('the name is typed at 17px', welcome.inputSize === 17, welcome.inputSize);
+  check('the accent arrow is the only action', welcome.buttonFill === 'rgb(36, 80, 216)' && welcome.buttonBox.w === 44 && welcome.buttonBox.h === 44, welcome.buttonBox);
   check('the caret is already in the field', welcome.focused === true);
-  check(
-    'the action is a 44px accent block at the end of the rule',
-    welcome.buttonBox.h === 44 && welcome.buttonFill === 'rgb(200, 40, 18)' &&
-      welcome.buttonRadius === 0 &&
-      welcome.fieldBox.right - welcome.buttonBox.right >= 0 && welcome.fieldBox.right - welcome.buttonBox.right <= 4 &&
-      Math.abs(welcome.buttonBox.cy - welcome.fieldBox.cy) < 20,
-    { button: welcome.buttonBox, field: welcome.fieldBox, fill: welcome.buttonFill },
-  );
-  check(
-    'the arrow is an inline 17px glyph with a 2px stroke',
-    welcome.arrow !== null && Math.round(welcome.arrow.size) === 17 && welcome.arrow.stroke === '2',
-    welcome.arrow,
-  );
-  check(
-    'the page is type and one seal — no photograph is loaded',
-    welcome.images === 0 && welcome.seal !== null && welcome.seal.textPath === true && welcome.seal.w >= 190,
-    welcome.seal,
-  );
-  check('the first page is cream paper, not a pinned dark plate', welcome.background === 'rgb(244, 239, 230)', welcome.background);
-  check(
-    'the Welcome screen never scrolls',
-    welcome.scrolls <= 1 && welcome.docScroll[0] <= 1 && welcome.docScroll[1] <= 1 && welcome.scrollables === 0,
-    { layer: welcome.scrolls, page: welcome.docScroll, scrollables: welcome.scrollables },
-  );
-  check('the top 48px drags the window', welcome.strip !== null && welcome.strip.h === 48 && welcome.drags === true, welcome.strip);
-  check(
-    'the caption buttons stay clear of the drag region',
-    welcome.overCaption === false && welcome.strip.right <= welcome.viewport[0] - 130,
-    { overCaption: welcome.overCaption, strip: welcome.strip, viewport: welcome.viewport },
-  );
-  console.log(
-    `\u001b[2mwelcome: heading ${welcome.headingBox.w}×${welcome.headingBox.h}, field ${welcome.fieldBox.w}×${welcome.fieldBox.h}, seal ${welcome.seal?.w ?? 0}\u001b[0m`,
-  );
+  check('there is no photograph and no seal', welcome.images === 0 && welcome.seal === 0, { images: welcome.images, seal: welcome.seal });
+  check('no helper copy, edition line or colophon', !/edition|ledger|no account|no network|stays on this computer|press enter|quiet daily/i.test(welcome.text), welcome.text);
+  check('the first page is pinned paper', welcome.background === 'rgb(246, 244, 239)', welcome.background);
+  check('the top 48px drags the window', welcome.strip?.h === 48 && welcome.drags === true, welcome.strip);
+  check('the caption buttons stay clear of the drag region', welcome.overCaption === false && welcome.strip.right <= 1440 - 130, welcome);
+  check('the Welcome screen never scrolls', welcome.scrolls <= 1 && welcome.docScroll[0] <= 1 && welcome.docScroll[1] <= 1 && welcome.scrollables === 0, welcome);
 
-  // The seal is the page's continuous motion. Sample the computed transform
-  // twice, well apart, and check that it actually turned.
-  const sealMotion = await page(`(async () => {
-    const seal = document.querySelector('.welcome-seal');
-    if (!seal) return { first: null, second: null, reduced: false };
-    const first = getComputedStyle(seal).transform;
-    await new Promise((r) => setTimeout(r, 420));
-    const second = getComputedStyle(seal).transform;
-    return { first, second, reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches };
-  })()`);
-  check(
-    'the seal turns while the page is up — still under reduced motion',
-    sealMotion.reduced ? sealMotion.first === sealMotion.second : sealMotion.first !== sealMotion.second,
-    sealMotion,
-  );
-
-  // Captured here, while the page is still up and still empty — this is the
-  // first thing a new owner ever sees.
   if (SHOTS) {
     const dir = path.resolve(root, SHOTS);
     fs.mkdirSync(dir, { recursive: true });
@@ -635,194 +467,532 @@ try {
     else warn('[verify] could not capture the Welcome screen — the window is not compositing');
   }
 
-  /* --------------------------------------------------- the refusals */
-  const empty = await page(`(async () => {
-    const layer = document.querySelector('#daybook-welcome');
-    if (!layer) return { noteText: null, noteSize: 0, focused: false, invalid: null, described: null, moved: 0, reduced: false };
-    const input = layer.querySelector('input[aria-label="Your name"]');
-    const field = layer.querySelector('.welcome-field');
-    const wrapper = field ? field.parentElement : null;
-    document.querySelector('button[aria-label="Continue"]').click();
-    // Watch the field wrapper for the shake while the helper line appears.
-    const moved = [];
-    const until = Date.now() + 800;
-    while (Date.now() < until) {
-      const matrix = /matrix\\(([^)]+)\\)/.exec(wrapper ? getComputedStyle(wrapper).transform : '');
-      if (matrix) {
-        const x = Math.round(parseFloat(matrix[1].split(',')[4]) * 10) / 10;
-        if (Math.abs(x) > 0.5 && moved.indexOf(x) === -1) moved.push(x);
-      }
-      await new Promise((r) => setTimeout(r, 16));
-    }
-    const note = document.getElementById('welcome-error');
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1000, height: 600, deviceScaleFactor: 1, mobile: false });
+  await sleep(300);
+  const compact = await page(`(() => {
+    const h = document.getElementById('welcome-heading');
+    const f = document.querySelector('.welcome-field');
+    const lines = h ? Math.round(h.getBoundingClientRect().height / parseFloat(getComputedStyle(h).lineHeight)) : 0;
+    const hb = h?.getBoundingClientRect();
+    const fb = f?.getBoundingClientRect();
     return {
-      noteText: note ? note.textContent.trim() : null,
-      noteSize: note ? Math.round(parseFloat(getComputedStyle(note).fontSize)) : 0,
-      focused: document.activeElement === input,
-      invalid: input.getAttribute('aria-invalid'),
-      described: input.getAttribute('aria-describedby'),
-      moved: moved.length,
-      reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      lines,
+      inside: Boolean(hb && fb && hb.left > 0 && hb.right < innerWidth && fb.left > 0 && fb.right < innerWidth && fb.bottom < innerHeight),
+      gap: hb && fb ? Math.round(fb.top - hb.bottom) : -1,
+      scroll: document.documentElement.scrollHeight - innerHeight,
     };
   })()`);
-  check('an empty name is refused in plain words', /^Enter a name to continue\.$/.test(empty.noteText ?? ''), empty.noteText);
-  check('the helper line is 13px', empty.noteSize === 13, empty.noteSize);
-  check('the refusal keeps the caret in the field', empty.focused === true && empty.invalid === 'true', empty);
-  check(
-    'and shakes the field — skipped under reduced motion',
-    empty.reduced ? empty.moved === 0 : empty.moved > 0,
-    { reduced: empty.reduced, positions: empty.moved },
-  );
+  check('at 1000×600 the question stays on one or two lines', compact.lines >= 1 && compact.lines <= 2, compact);
+  check('and the field fits below it without a scrollbar', compact.inside && compact.gap >= 16 && compact.scroll <= 1, compact);
+  await cdp.send('Emulation.clearDeviceMetricsOverride');
 
-  // The helper sits on plain paper now, so its contrast is a two-colour sum
-  // rather than a sample of a photograph.
-  const contrast = await page(`(() => {
-    const note = document.getElementById('welcome-error');
-    if (!note) return { error: 'no note' };
-    const parse = (value) => String(value).replace(/[^0-9.]/g, ' ').trim().split(/ +/).map(Number).slice(0, 3);
-    const lin = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-    const rel = (rgb) => 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
-    const fg = parse(getComputedStyle(note).color);
-    const bg = parse(getComputedStyle(document.querySelector('#daybook-welcome')).backgroundColor);
-    const a = rel(fg), b = rel(bg);
-    return { ratio: Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100, fg, bg };
-  })()`);
-  check('the helper line clears 4.5:1 on the paper', typeof contrast.ratio === 'number' && contrast.ratio >= 4.5, contrast);
-
-  const letters = await page(`(async () => {
+  const refused = await page(`(async () => {
     const input = document.querySelector('input[aria-label="Your name"]');
-    if (!input) return { note: null, still: false };
+    document.querySelector('button[aria-label="Continue"]').click();
+    await new Promise((r) => setTimeout(r, 180));
+    const note = document.getElementById('welcome-error');
+    return {
+      text: note ? note.textContent.trim() : null,
+      size: note ? Math.round(parseFloat(getComputedStyle(note).fontSize)) : 0,
+      focused: document.activeElement === input,
+      invalid: input.getAttribute('aria-invalid'),
+    };
+  })()`);
+  check('an empty name is refused in plain words', /^Enter a name to continue\.$/.test(refused.text ?? ''), refused.text);
+  check('the error is 13px and clears 4.5:1', refused.size === 13, refused.size);
+  check('the refusal keeps the caret in the field', refused.focused === true && refused.invalid === 'true', refused);
+
+  const digits = await page(`(async () => {
+    const input = document.querySelector('input[aria-label="Your name"]');
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
     setter.call(input, 'Agent 47');
     input.dispatchEvent(new Event('input', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 80));
     document.querySelector('button[aria-label="Continue"]').click();
-    await window.__wait(() => Boolean(document.getElementById('welcome-error')), 1200);
-    return {
-      note: document.getElementById('welcome-error')?.textContent.trim() ?? null,
-      still: Boolean(document.querySelector('#daybook-welcome')),
-    };
+    await new Promise((r) => setTimeout(r, 200));
+    return { text: document.getElementById('welcome-error')?.textContent.trim() ?? null, still: Boolean(document.querySelector('#daybook-welcome')) };
   })()`);
-  check(
-    'a name with digits is refused too',
-    /letters/i.test(letters.note ?? '') && letters.still === true,
-    letters,
-  );
+  check('a name with digits is refused too', /letters/i.test(digits.text ?? '') && digits.still, digits);
 
-  /* ------------------------------------------------ the smallest window */
-  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1000, height: 600, deviceScaleFactor: 1, mobile: false });
-  await sleep(400);
-  const compact = await page(`(() => {
-    const heading = document.getElementById('welcome-heading');
-    const field = document.querySelector('.welcome-field');
-    if (!heading || !field) return { lines: 0, edges: false, gap: -1, inside: false, scrolls: 0, size: 0, width: 0 };
-    const h = heading.getBoundingClientRect();
-    const f = field.getBoundingClientRect();
-    return {
-      lines: Math.round(h.height / parseFloat(getComputedStyle(heading).lineHeight)),
-      edges: h.left > 0 && h.right < window.innerWidth,
-      gap: Math.round(f.top - h.bottom),
-      inside: f.bottom < window.innerHeight && f.top > 0 && f.right < window.innerWidth && f.left > 0,
-      scrolls: document.documentElement.scrollHeight - window.innerHeight,
-      size: Math.round(parseFloat(getComputedStyle(heading).fontSize)),
-      width: Math.round(f.width),
-    };
-  })()`);
-  check(
-    'at 1000×600 the heading stays on one or two lines, clear of the edges',
-    compact.lines >= 1 && compact.lines <= 2 && compact.edges,
-    compact,
-  );
-  check('and the field still fits, clear of the heading', compact.inside && compact.gap >= 8, compact);
-  check('with no scrollbar at the minimum window', compact.scrolls <= 1, compact);
-  await cdp.send('Emulation.clearDeviceMetricsOverride');
-
-  /* --------------------------------------------------- name → greeting */
-  const onboarded = await page(`(async () => {
+  const onboarding = await page(`(async () => {
     const input = document.querySelector('input[aria-label="Your name"]');
-    if (!input) return { greeted: false, greeting: null, left: false, header: false, tabs: false, heading: null };
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
     setter.call(input, '  Ada   Lovelace  ');
     input.dispatchEvent(new Event('input', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 80));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    // The greeting is on screen for 1.6s: catch it while it is there.
-    const greeted = await window.__wait(() => {
-      const line = document.querySelector('#daybook-welcome p');
-      return Boolean(line && line.textContent.indexOf('Welcome,') === 0);
-    }, 3000);
-    const greeting = document.querySelector('#daybook-welcome p')?.textContent.trim() ?? null;
-    // Any key skips the acknowledgement: pressing one now must finish well
-    // inside the 1.6s the greeting would otherwise sit there for.
-    const started = Date.now();
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
-    const left = await window.__wait(() => !document.querySelector('#daybook-welcome'), 4000);
-    const skippedIn = Date.now() - started;
-    await new Promise((r) => setTimeout(r, 500));
+    const greeted = await window.__wait(() => Boolean(document.querySelector('#welcome-greeting')), 3000);
+    const greeting = document.querySelector('#welcome-greeting')?.textContent.replace(/\\s+/g, ' ').trim() ?? null;
+    const left = await window.__wait(() => !document.querySelector('#daybook-welcome'), 5000);
+    await window.__wait(() => Boolean(document.querySelector('header h1')), 3000);
+    await new Promise((r) => setTimeout(r, 300));
     return {
       greeted,
       greeting,
       left,
-      skippedIn,
-      header: Boolean(document.querySelector('header')),
-      tabs: Boolean(document.querySelector('nav[aria-label="Sections"]')),
-      heading: document.querySelector('main h1')?.textContent.trim() ?? null,
+      aside: Boolean(document.querySelector('aside')),
+      heading: document.querySelector('header h1')?.textContent.trim() ?? null,
     };
   })()`);
-  check('Enter saves the name', onboarded.greeted === true, onboarded);
-  check('the name is said back before the app opens', onboarded.greeting === 'Welcome, Ada Lovelace.', onboarded.greeting);
-  check(
-    'and any key skips the acknowledgement',
-    onboarded.skippedIn > 0 && onboarded.skippedIn < 1200,
-    { skippedInMs: onboarded.skippedIn, wouldHaveBeenMs: 2000 },
-  );
-  check('the screen leaves and the shell takes over', onboarded.left === true && onboarded.header && onboarded.tabs, onboarded);
-  check('Home greets the owner by name', onboarded.heading === 'Today, Ada Lovelace', onboarded.heading);
+  check('Enter saves the name', onboarding.greeted === true, onboarding);
+  check('the name is said back before the app opens', onboarding.greeting === 'Welcome, Ada Lovelace.', onboarding.greeting);
+  check('the shell takes over with the owner’s name', onboarding.left && onboarding.aside && onboarding.heading === 'Today, Ada Lovelace', onboarding);
 
-  await sleep(600); // the save is debounced by 350ms
+  await sleep(800);
   const fresh = readData(freshDir);
   check('the name reaches the data file', fresh?.profile?.name === 'Ada Lovelace', fresh?.profile);
-  check('with the moment it was given', typeof fresh?.profile?.createdAt === 'string', fresh?.profile);
-  check(
-    'and the greeting is recorded as done',
-    fresh?.onboarding?.completed === true && fresh.onboarding.version === 1,
-    fresh?.onboarding,
-  );
-  check('the document is saved at the current schema version', fresh?.version === 3, fresh?.version);
-  check(
-    'a fresh install takes no pre-migration copy (there was nothing to migrate)',
-    !fs.readdirSync(path.join(freshDir, 'backups')).some((f) => f.startsWith('pre-')),
-    fs.readdirSync(path.join(freshDir, 'backups')),
-  );
+  check('the document is saved at schema v4', fresh?.version === 4, fresh?.version);
+  check('the note sheet is empty on day one', fresh?.notes?.html === '', fresh?.notes);
+
+  /* ================================================================== *
+   * Phase 2 — shell, notes, tasks and the home page.
+   * ================================================================== */
+
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await sleep(350);
+
+  const shell = await page(`(() => {
+    const nav = document.querySelector('nav[aria-label="Sections"]');
+    const aside = document.querySelector('aside');
+    const header = document.querySelector('header');
+    return {
+      nav: [...(nav?.querySelectorAll('button') ?? [])].map((b) => b.textContent.trim()),
+      asideWidth: aside ? Math.round(aside.getBoundingClientRect().width) : 0,
+      headerHeight: header ? Math.round(header.getBoundingClientRect().height) : 0,
+      pageTitle: header?.querySelector('h1')?.textContent.trim() ?? null,
+      contentHeight: Math.round(document.querySelector('main').getBoundingClientRect().height),
+      viewportHeight: innerHeight,
+      pageScroll: document.documentElement.scrollHeight - innerHeight,
+      mainScroll: Math.max(document.querySelector('main').scrollHeight - document.querySelector('main').clientHeight, document.querySelector('main').scrollWidth - document.querySelector('main').clientWidth),
+      oldCopy: /The daily edition|Colophon|Movement|Start focus|by tag|Combined/i.test(document.body.innerText),
+    };
+  })()`);
+  check('the rail has the four sections in order', shell.nav.join(',') === 'Home,Timer,Activity,Settings', shell.nav);
+  check('the rail is a fixed sidebar, not a header strip', shell.asideWidth >= 150 && shell.asideWidth <= 190, shell.asideWidth);
+  check('the page bar is 48px and the content fills the rest', shell.headerHeight === 48 && shell.contentHeight === shell.viewportHeight - 48, shell);
+  check('the page bar names the owner', shell.pageTitle === 'Today, Ada Lovelace', shell.pageTitle);
+  check('Home fits without a scrollbar', shell.pageScroll <= 1 && shell.mainScroll <= 1, shell);
+  check('the old editorial copy is gone', shell.oldCopy === false, shell.oldCopy);
+
+  const home = await page(`(() => {
+    const notes = document.querySelector('.note-prose');
+    const tools = [...document.querySelectorAll('button[aria-label^="Text size"]')].map((b) => b.getAttribute('aria-label'));
+    return {
+      notes: Boolean(notes),
+      placeholder: notes?.querySelector('p')?.className ?? '',
+      bold: Boolean(document.querySelector('button[aria-label="Bold"]')),
+      italic: Boolean(document.querySelector('button[aria-label="Italic"]')),
+      underline: Boolean(document.querySelector('button[aria-label="Underline"]')),
+      sizes: tools,
+      taskInput: Boolean(document.querySelector('input[aria-label="Add a task"]')),
+      primary: document.querySelectorAll('main button.btn-primary').length,
+      focus: document.querySelector('section[aria-labelledby="home-focus"] p.tab')?.textContent.trim() ?? null,
+      movement: /Movement|Start focus/i.test(document.querySelector('main').innerText),
+      noteScrolls: Boolean(notes && notes.scrollHeight > notes.clientHeight),
+    };
+  })()`);
+  check('Home leads with a notes editor', home.notes === true, home);
+  check('the editor has bold, italic and underline', home.bold && home.italic && home.underline, home);
+  check('the editor has four text sizes', home.sizes.join(',') === 'Text size S,Text size M,Text size L,Text size XL', home.sizes);
+  check('the task input is on Home', home.taskInput === true);
+  check('Home has no Start focus action and no movement', home.primary === 0 && home.movement === false, home);
+  check('the focus figure uses the one duration format', /^(\d+h \d{2}m|\d+m)$/.test(home.focus ?? ''), home.focus);
+
+  // Type, select and format a note; it must be in the editor and on disk.
+  const typed = await page(`(async () => {
+    const prose = document.querySelector('.note-prose');
+    prose.focus();
+    document.execCommand('insertText', false, 'A note for today.');
+    await new Promise((r) => setTimeout(r, 150));
+    return prose.innerText.trim();
+  })()`);
+  check('typing reaches the note editor', String(typed).includes('A note for today.'), typed);
+
+  // Select through the editor's own keymap, exactly as a person would. The
+  // toolbar's chain().focus() restores ProseMirror's selection, so a DOM range
+  // set from outside the editor would be discarded before the mark is applied.
+  await key('rawKeyDown', { key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 2 });
+  await key('keyUp', { key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 2 });
+  await sleep(180);
+  const selected = await page(`getSelection()?.toString() ?? ''`);
+  check('the note can be selected for formatting', String(selected).includes('A note for today.'), selected);
+
+  const note = await page(`(async () => {
+    document.querySelector('button[aria-label="Bold"]').click();
+    await new Promise((r) => setTimeout(r, 120));
+    document.querySelector('button[aria-label="Text size L"]').click();
+    await new Promise((r) => setTimeout(r, 900));
+    return { html: document.querySelector('.note-prose').innerHTML, text: document.querySelector('.note-prose').innerText.trim() };
+  })()`);
+  check('bold and a larger size are applied', /<strong>/.test(note.html) && /font-size:\s*18px/.test(note.html), note.html);
+  await sleep(700);
+  const savedNote = readData(freshDir)?.notes?.html ?? '';
+  check('the note is saved to the document', /A note for today/.test(savedNote) && /<strong>/.test(savedNote) && /font-size:\s*18px/.test(savedNote), savedNote);
+
+  // Tasks: add, complete, then fill the list to its cap at the minimum window.
+  const task = await page(`(async () => {
+    const input = document.querySelector('input[aria-label="Add a task"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(input, 'Verification task');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 80));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await new Promise((r) => setTimeout(r, 300));
+    const row = [...document.querySelectorAll('main ul li')].find((li) => li.textContent.includes('Verification task'));
+    row?.querySelector('button[aria-label^="Complete"]')?.click();
+    await new Promise((r) => setTimeout(r, 300));
+    return {
+      added: Boolean(row),
+      stillOpen: [...document.querySelectorAll('main ul li')].some((li) => li.textContent.includes('Verification task')),
+      undo: document.body.innerText.includes('Undo'),
+    };
+  })()`);
+  check('a task can be added on Home', task.added === true, task);
+  check('checking it removes it from the open list and offers Undo', task.stillOpen === false && task.undo === true, task);
+
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1000, height: 600, deviceScaleFactor: 1, mobile: false });
+  await sleep(300);
+  const cap = await page(`(async () => {
+    const setValue = (el, value) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(el, value);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    for (let i = 0; i < 9; i++) {
+      const input = document.querySelector('input[aria-label="Add a task"]');
+      if (!input || input.disabled) break;
+      setValue(input, 'Cap task ' + i);
+      await new Promise((r) => setTimeout(r, 80));
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await new Promise((r) => setTimeout(r, 120));
+    }
+    const input = document.querySelector('input[aria-label="Add a task"]');
+    const main = document.querySelector('main');
+    const list = document.querySelector('section[aria-labelledby="home-tasks"] ul');
+    const result = {
+      full: input.disabled,
+      rows: document.querySelectorAll('section[aria-labelledby="home-tasks"] ul > li').length,
+      mainOverflow: Math.max(main.scrollHeight - main.clientHeight, main.scrollWidth - main.clientWidth),
+      listOverflow: list ? Math.max(list.scrollHeight - list.clientHeight, list.scrollWidth - list.clientWidth) : 0,
+    };
+    [...document.querySelectorAll('button[aria-label^="Delete Cap task"]')].forEach((b) => b.click());
+    await new Promise((r) => setTimeout(r, 250));
+    result.cleaned = document.querySelectorAll('button[aria-label^="Delete Cap task"]').length;
+    return result;
+  })()`);
+  check('the task list stops at its seven-item cap', cap.full === true && cap.rows <= 7, cap);
+  check('a full task list still fits the smallest window', cap.mainOverflow <= 1 && cap.listOverflow <= 1, cap);
+  check('the verification tasks are cleaned up', cap.cleaned === 0, cap);
+  await cdp.send('Emulation.clearDeviceMetricsOverride');
+  await sleep(250);
+
+  // The note survives leaving and returning to Home.
+  await tab('Timer');
+  await tab('Home');
+  const noteBack = await page(`document.querySelector('.note-prose')?.innerText.trim() ?? ''`);
+  check('the note survives a tab switch', String(noteBack).includes('A note for today.'), noteBack);
+
+  /* ================================================================== *
+   * Phase 3 — the timer, still the one place to start focus.
+   * ================================================================== */
+
+  await tab('Timer');
+  await page(`(async () => {
+    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Pomodoro')?.click();
+    await new Promise((r) => setTimeout(r, 300));
+    return true;
+  })()`);
+  const timerIdle = await page(`(() => {
+    const primary = document.querySelector('main button.btn-primary');
+    const seg = [...document.querySelectorAll('.seg button')].map((b) => b.textContent.trim());
+    return {
+      seg,
+      primary: primary?.textContent.trim(),
+      ticks: document.querySelectorAll('svg[aria-label*="remaining"] line').length,
+      dots: document.querySelectorAll('main [aria-hidden="true"] span.h-2').length,
+      editLink: /—\\s*Edit/.test(document.body.innerText),
+      tags: document.querySelectorAll('[role="group"][aria-label="Focus tag"] .chip').length,
+      manual: document.body.innerText.includes('Add session'),
+      footer: /Today .* · \\d+ session/.test(document.body.innerText),
+    };
+  })()`);
+  check('Timer offers Pomodoro and Custom', timerIdle.seg.join(',') === 'Pomodoro,Custom', timerIdle.seg);
+  check('Timer leads with Start', timerIdle.primary === 'Start', timerIdle.primary);
+  check('the dial still draws sixty ticks and four round dots', timerIdle.ticks === 60 && timerIdle.dots === 4, timerIdle);
+  check('the tag chips are on the timer screen', timerIdle.tags >= 1, timerIdle);
+  check('the old edit-lengths link and copy are gone', timerIdle.editLink === false, timerIdle);
+  check('today’s figures and a manual session remain', timerIdle.footer && timerIdle.manual, timerIdle);
+
+  const running = await page(`(async () => {
+    const label = () => document.querySelector('main button.btn-primary')?.textContent.trim();
+    document.querySelector('main button.btn-primary').click();
+    const started = await window.__wait(() => label() === 'Pause', 3000);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    const paused = await window.__wait(() => label() === 'Start', 3000);
+    return { started, paused };
+  })()`);
+  check('Start begins the session', running.started === true, running);
+  check('Space pauses it again', running.paused === true, running);
+
+  const custom = await page(`(async () => {
+    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Custom').click();
+    await new Promise((r) => setTimeout(r, 250));
+    const presets = [...document.querySelectorAll('main .chip')].map((c) => c.textContent.trim()).filter((t) => /^\\d+ min$/.test(t));
+    const field = document.querySelector('input[aria-label="Timer length, hours and minutes"]');
+    return { presets, field: field?.value, skip: document.body.innerText.includes('Skip') };
+  })()`);
+  check('Custom mode has its five presets and an HH:MM field', custom.presets.join(',') === '15 min,30 min,45 min,60 min,90 min' && /^\d{2}:\d{2}$/.test(custom.field ?? ''), custom);
+  check('Custom mode has no Skip control', custom.skip === false, custom);
+  await page(`(async () => {
+    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Pomodoro')?.click();
+    await new Promise((r) => setTimeout(r, 250));
+    document.querySelector('main button.btn-primary')?.click();
+    await new Promise((r) => setTimeout(r, 250));
+    [...document.querySelectorAll('main button')].find((b) => b.textContent.trim() === 'Reset')?.click();
+    await new Promise((r) => setTimeout(r, 200));
+    return true;
+  })()`);
+
+  /* ================================================================== *
+   * Phase 4 — Activity, reduced to one measure.
+   * ================================================================== */
+
+  await tab('Activity');
+  const activity = await page(`(() => {
+    const cells = document.querySelectorAll('.heat-cell[data-cell]');
+    return {
+      figures: [...document.querySelectorAll('main .card .label')].map((el) => el.textContent.trim()).slice(0, 3),
+      cells: cells.length,
+      columns: new Set([...cells].map((c) => c.dataset.col)).size,
+      chart: Boolean(document.querySelector('svg[aria-label*="last 30 days"]')),
+      controls: document.querySelectorAll('main .seg button').length,
+      tagChart: /By tag|Other|No tag/i.test(document.querySelector('main').innerText),
+      insight: /You focus best/i.test(document.body.innerText),
+    };
+  })()`);
+  check('Activity shows exactly three focus figures', activity.figures.join(',') === 'Today,This week,Streak', activity.figures);
+  check('the year calendar is still 53 × 7', activity.cells === 371 && activity.columns === 53, activity);
+  check('the 30-day chart is on screen', activity.chart === true);
+  check('the old filters, tag chart and insight line are gone', activity.controls === 0 && activity.tagChart === false && activity.insight === false, activity);
+
+  const dayDialog = await page(`(async () => {
+    const today = [...document.querySelectorAll('.heat-cell[data-cell]')].find((c) => c.dataset.today === 'true');
+    today?.click();
+    const opened = await window.__wait(() => Boolean(document.querySelector('[role="dialog"]')), 2000);
+    const dialog = document.querySelector('[role="dialog"]');
+    return {
+      opened,
+      title: dialog?.querySelector('h2')?.textContent.trim() ?? null,
+      focus: dialog?.innerText.includes('Focus sessions') ?? false,
+      tasks: dialog?.innerText.includes('Tasks done') ?? false,
+      movement: dialog?.innerText.includes('Movement') ?? false,
+      addSession: dialog?.innerText.includes('Add session') ?? false,
+    };
+  })()`);
+  check('a day opens in the detail dialog', dayDialog.opened === true, dayDialog);
+  check('the dialog edits sessions and completed tasks only', dayDialog.focus && dayDialog.tasks && dayDialog.movement === false && dayDialog.addSession, dayDialog);
+  await page(`(async () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await new Promise((r) => setTimeout(r, 250));
+    return !document.querySelector('[role="dialog"]');
+  })()`);
+
+  /* ================================================================== *
+   * Phase 5 — Settings, four cards and no prose.
+   * ================================================================== */
+
+  await tab('Settings');
+  const settings = await page(`(() => {
+    const text = document.querySelector('main').innerText;
+    return {
+      cards: [...document.querySelectorAll('main section h2')].map((h) => h.textContent.trim()),
+      numbered: /\\b0[1-9]\\b/.test(text),
+      name: Boolean(document.querySelector('main input[aria-label="Your name"]')),
+      theme: [...document.querySelectorAll('main .seg button')].map((b) => b.textContent.trim()),
+      prose: /These three numbers|Every change|Everything is stored|Changes apply|A running session|One JSON file|Export writes/i.test(text),
+      erase: text.includes('Erase all data'),
+    };
+  })()`);
+  check('Settings is four plain cards', settings.cards.join(',') === 'Goals,App,Timer,Data', settings.cards);
+  check('the numbered headings and explanatory copy are gone', settings.numbered === false && settings.prose === false, settings);
+  check('the name and theme controls remain', settings.name && settings.theme.join(',') === 'Auto,Light,Dark', settings);
+  check('there is one destructive action', settings.erase === true);
+
+  const renamed = await page(`(async () => {
+    const field = document.querySelector('main input[aria-label="Your name"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(field, 'Ada King');
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 80));
+    field.focus();
+    field.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 450));
+    return field.value;
+  })()`);
+  await tab('Home');
+  await sleep(250);
+  const renamedTitle = await page(`document.querySelector('header h1')?.textContent.trim() ?? null`);
+  check('changing the name updates the page bar', renamed === 'Ada King' && renamedTitle === 'Today, Ada King', { renamed, renamedTitle });
+  await tab('Settings');
+
+  const clamp = await page(`(async () => {
+    const field = document.querySelector('main input[aria-label="Focus in min"]');
+    const original = field.value;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(field, '9999');
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 80));
+    field.focus();
+    field.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    const clamped = document.querySelector('main input[aria-label="Focus in min"]').value;
+    const restore = document.querySelector('main input[aria-label="Focus in min"]');
+    setter.call(restore, original);
+    restore.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 80));
+    restore.focus();
+    restore.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 300));
+    return { original, clamped, restored: document.querySelector('main input[aria-label="Focus in min"]').value };
+  })()`);
+  check('an out-of-range goal is clamped on blur', clamp.clamped === '720', clamp);
+  check('the test restores the owner’s goal', clamp.restored === clamp.original, clamp);
+
+  const theme = await page(`(async () => {
+    const wasDark = document.documentElement.classList.contains('dark');
+    [...document.querySelectorAll('main .seg button')].find((b) => b.textContent.trim() === 'Dark')?.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const dark = document.documentElement.classList.contains('dark');
+    [...document.querySelectorAll('main .seg button')].find((b) => b.textContent.trim() === 'Auto')?.click();
+    await new Promise((r) => setTimeout(r, 400));
+    return { wasDark, dark, after: document.documentElement.classList.contains('dark') };
+  })()`);
+  check('Dark repaints the app', theme.dark === true, theme);
+  check('Auto returns to the Windows setting', theme.after === theme.wasDark, theme);
+
+  const erase = await page(`(async () => {
+    [...document.querySelectorAll('main button')].find((b) => b.textContent.includes('Erase all data'))?.click();
+    await new Promise((r) => setTimeout(r, 300));
+    const dialog = document.querySelector('[role="dialog"]');
+    const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((b) => b.textContent.includes('Erase everything'));
+    const required = dialog?.innerText.includes('Type DELETE') ?? false;
+    const disabled = confirm?.disabled ?? true;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await new Promise((r) => setTimeout(r, 350));
+    return { required, disabled, closed: !document.querySelector('[role="dialog"]') };
+  })()`);
+  check('erasing requires a typed confirmation', erase.required && erase.disabled, erase);
+  check('cancelling closes the dialog untouched', erase.closed === true, erase);
+
+  /* ================================================================== *
+   * Phase 6 — every tab fits at every supported size.
+   * ================================================================== */
+
+  const sizes = [
+    [1000, 600],
+    [1366, 768],
+    [1920, 1080],
+  ];
+  for (const [width, height] of sizes) {
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+    for (const label of ['Home', 'Timer', 'Activity', 'Settings']) {
+      await tab(label);
+      await sleep(220);
+      const fit = await page(`(() => {
+        const main = document.querySelector('main');
+        const tiny = [...document.querySelectorAll('main *')].filter((el) => {
+          if (el.closest('[data-ornament]') || el.closest('.sr-only') || el.closest('[aria-hidden="true"]')) return false;
+          if (el.childElementCount > 0) return false;
+          if (!el.textContent.trim()) return false;
+          const r = el.getBoundingClientRect();
+          if (r.width < 1 || r.height < 1) return false;
+          return parseFloat(getComputedStyle(el).fontSize) < 12;
+        }).map((el) => ({ tag: el.tagName, text: el.textContent.trim().slice(0, 30), size: parseFloat(getComputedStyle(el).fontSize) }));
+        return {
+          page: Math.max(document.documentElement.scrollHeight - innerHeight, document.documentElement.scrollWidth - innerWidth),
+          main: Math.max(main.scrollHeight - main.clientHeight, main.scrollWidth - main.clientWidth),
+          tiny,
+        };
+      })()`);
+      check(`${label} fits ${width}×${height}`, fit.page <= 1 && fit.main <= 1, fit);
+      check(`${label} keeps every label at 12px or more at ${width}×${height}`, fit.tiny.length === 0, fit.tiny);
+    }
+  }
+
+  /* --------------------------------------------------------- screenshots */
+  if (SHOTS) {
+    const dir = path.resolve(root, SHOTS);
+    fs.mkdirSync(dir, { recursive: true });
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: SHOT_SIZE[0] ?? 1440,
+      height: SHOT_SIZE[1] ?? 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    for (const label of ['Home', 'Timer', 'Activity', 'Settings']) {
+      await tab(label);
+      await sleep(450);
+      const shot = await capture();
+      if (!shot) {
+        warn(`[verify] could not capture ${label}`);
+        continue;
+      }
+      fs.writeFileSync(path.join(dir, `${label.toLowerCase()}.png`), Buffer.from(shot.data, 'base64'));
+      console.log(`\\u001b[2m${label} screenshot → ${path.relative(root, path.join(dir, `${label.toLowerCase()}.png`))}\\u001b[0m`);
+    }
+    await cdp.send('Emulation.clearDeviceMetricsOverride');
+  }
+
+  const tidy = await page(`(async () => {
+    [...document.querySelectorAll('nav[aria-label="Sections"] button')].find((b) => b.textContent.trim() === 'Timer')?.click();
+    await new Promise((r) => setTimeout(r, 250));
+    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Pomodoro')?.click();
+    await new Promise((r) => setTimeout(r, 250));
+    [...document.querySelectorAll('main button')].find((b) => b.textContent.trim() === 'Reset')?.click();
+    await new Promise((r) => setTimeout(r, 250));
+    return document.querySelector('main button.btn-primary')?.textContent.trim() ?? null;
+  })()`);
+  check('the run leaves the timer stopped and tidy', tidy === 'Start', tidy);
+
+  const errors = await page('JSON.stringify(window.__errors || [])');
+  check('the renderer logged no errors or warnings', Array.isArray(errors) && errors.length === 0, errors);
 
   await endSession();
 
   /* ================================================================== *
-   * Phase 2 — an upgrade: the owner’s own document, copied aside.
+   * Phase 7 — an upgrade keeps every day and does not invent a name.
    * ================================================================== */
 
   const upgradeDir = scratchDir('upgrade');
   const hasLiveFile = fs.existsSync(liveDataFile);
   check('the owner’s own document is available to upgrade', hasLiveFile, liveDataFile);
-  if (hasLiveFile) fs.copyFileSync(liveDataFile, path.join(upgradeDir, 'daybook.json'));
-  const beforeUpgrade = hasLiveFile ? JSON.parse(fs.readFileSync(liveDataFile, 'utf8')) : null;
+  let beforeUpgrade = null;
+  let seedText = '';
+  if (hasLiveFile) {
+    // Simulate a 1.x document: schema v3, no note sheet, no saved name. The
+    // history is the owner's real history, so a migration that drops a day or a
+    // task is caught against real data rather than a fixture.
+    beforeUpgrade = JSON.parse(fs.readFileSync(liveDataFile, 'utf8'));
+    beforeUpgrade.version = 3;
+    delete beforeUpgrade.notes;
+    delete beforeUpgrade.profile;
+    seedText = JSON.stringify(beforeUpgrade);
+    fs.writeFileSync(path.join(upgradeDir, 'daybook.json'), seedText);
+  }
 
   await beginSession({ DAYBOOK_DATA_DIR: upgradeDir });
-  check('an upgrading owner without a name is greeted once', (await page('Boolean(document.querySelector("#daybook-welcome"))')) === true);
-
+  check('an upgrading owner is greeted once', (await page('Boolean(document.querySelector("#daybook-welcome"))')) === true);
   const copies = hasLiveFile
     ? fs.readdirSync(path.join(upgradeDir, 'backups')).filter((f) => f.startsWith('pre-'))
     : [];
   check(
     'the pre-migration copy is taken before the file is rewritten',
-    hasLiveFile && copies.length === 1 &&
-      fs.readFileSync(path.join(upgradeDir, 'backups', copies[0]), 'utf8') === fs.readFileSync(liveDataFile, 'utf8'),
+    hasLiveFile && copies.length === 1 && fs.readFileSync(path.join(upgradeDir, 'backups', copies[0]), 'utf8') === seedText,
     copies,
   );
 
   const upgraded = await page(`(async () => {
     const input = document.querySelector('input[aria-label="Your name"]');
-    if (!input) return { left: false, heading: document.querySelector('main h1')?.textContent.trim() ?? null };
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
     setter.call(input, 'Grace Hopper-Wells');
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -830,9 +1000,9 @@ try {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     const left = await window.__wait(() => !document.querySelector('#daybook-welcome'), 5000);
     await new Promise((r) => setTimeout(r, 600));
-    return { left, heading: document.querySelector('main h1')?.textContent.trim() ?? null };
+    return { left, heading: document.querySelector('header h1')?.textContent.trim() ?? null };
   })()`);
-  check('the upgrade is greeted and handed to Home', upgraded.left === true && upgraded.heading === 'Today, Grace Hopper-Wells', upgraded);
+  check('the upgrade is greeted and handed to Home', upgraded.left && upgraded.heading === 'Today, Grace Hopper-Wells', upgraded);
 
   const afterUpgrade = readData(upgradeDir);
   check(
@@ -840,901 +1010,57 @@ try {
     JSON.stringify(census(afterUpgrade)) === JSON.stringify(census(beforeUpgrade)),
     { before: census(beforeUpgrade), after: census(afterUpgrade) },
   );
-
-  // The name is editable in Settings, and the shell follows it (second use).
-  const renamed = await page(`(async () => {
-    const strip = document.querySelector('nav[aria-label="Sections"]');
-    if (!strip) return { kept: null, heading: null };
-    const find = (label) => [...strip.querySelectorAll('button')].find((b) => b.textContent.trim() === label);
-    find('Settings').click();
-    await window.__wait(() => find('Settings').getAttribute('aria-current') === 'page');
-    await new Promise((r) => setTimeout(r, 250));
-    const card = document.querySelector('section[aria-labelledby="set-app"]');
-    const field = card.querySelector('input[type="text"]');
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-    setter.call(field, 'Grace Murray Hopper');
-    field.dispatchEvent(new Event('input', { bubbles: true }));
-    field.focus();
-    field.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 400));
-    const kept = card.querySelector('input[type="text"]').value;
-    find('Home').click();
-    await new Promise((r) => setTimeout(r, 300));
-    return { kept, heading: document.querySelector('main h1')?.textContent.trim() ?? null };
-  })()`);
-  check('the name is editable in Settings', renamed.kept === 'Grace Murray Hopper', renamed);
-  check('and Home follows the new name', renamed.heading === 'Today, Grace Murray Hopper', renamed.heading);
-
-  /* ---------------------------------------------------------- shell */
-  const targets = await fetchJson(`http://127.0.0.1:${PORT}/json/list`);
-  const appPages = targets.filter((t) => t.type === 'page' && String(t.url).startsWith('app://'));
-  check('the app opens one window and nothing else', appPages.length === 1, appPages.map((t) => t.url));
-
-  const shell = await page(`(() => {
-    const nav = [...document.querySelectorAll('nav[aria-label="Sections"] button')].map((b) => b.textContent.trim());
-    const header = document.querySelector('header');
-    return {
-      nav,
-      headerHeight: header ? Math.round(header.getBoundingClientRect().height) : 0,
-      hasAside: Boolean(document.querySelector('aside')),
-      sections: (document.body.innerText.match(/§/g) || []).length,
-      colophon: /Colophon|Editions\\b|Command palette|Classifieds/i.test(document.body.innerText),
-      contentHeight: Math.round(document.querySelector('main').getBoundingClientRect().height),
-      viewportHeight: window.innerHeight,
-    };
-  })()`);
-  check('exactly four tabs, in order', shell.nav.join(',') === 'Home,Timer,Activity,Settings', shell.nav);
-  check('the header row is 48px tall', shell.headerHeight === 48, shell.headerHeight);
-  check('the content area is the whole viewport below it', shell.contentHeight === shell.viewportHeight - 48, shell);
-  check('no sidebar', !shell.hasAside);
-  check('no § numbering anywhere', shell.sections === 0, shell.sections);
-  check('no colophon, palette or classifieds copy', !shell.colophon);
-
-  /* ----------------------------------------------------------- home */
-  const home = await page(`(() => {
-    const headings = [...document.querySelectorAll('h2')].map((h) => h.textContent.trim());
-    const columns = document.querySelectorAll('main .grid-cols-3 > section').length;
-    const primary = [...document.querySelectorAll('main button')].filter((b) => b.className.includes('btn-primary'));
-    // The header reads "3 tasks open" (or "1 task open"); the cap itself is
-    // deliberately not printed on the Home screen.
-    const tasksHeader = /(\\d+) tasks? open/.exec(document.body.innerText);
-    const rows = [...document.querySelectorAll('main ul > li')].length;
-    const waiting = /\\+(\\d+) waiting/.exec(document.body.innerText);
-    const focus = document.body.innerText.match(/\\b(\\d+h \\d{2}m|\\d+m)\\b/);
-    const progress = document.body.innerText.match(/(\\d+)%/);
-    return {
-      headings: headings.slice(0, 6),
-      columns,
-      primaryCount: primary.length,
-      primaryLabel: primary[0]?.textContent.trim(),
-      openTasks: tasksHeader ? Number(tasksHeader[1]) : null,
-      rows,
-      waiting: waiting ? Number(waiting[1]) : 0,
-      focus: focus ? focus[1] : null,
-      progress: progress ? progress[1] : null,
-      hasQuickAdd: Boolean(document.querySelector('input[aria-label="Add a task"]')),
-      hasOverallBar: Boolean(document.querySelector('[aria-label="Today\\'s progress"]')),
-    };
-  })()`);
-  check('Home has the three column headings', home.headings.join(',') === 'Focus,Movement,Tasks', home.headings);
-  check('Home shows three columns side by side', home.columns === 3, home.columns);
-  check('Home has exactly one primary action', home.primaryCount === 1, home.primaryLabel);
-  check('Home leads with Start focus while idle', /^Start focus|^Open timer/.test(home.primaryLabel ?? ''), home.primaryLabel);
-  check('Home shows the overall progress bar', home.hasOverallBar);
-  check('the task input is on screen', home.hasQuickAdd);
-  check('the open-task count is within the cap', home.openTasks !== null && home.openTasks <= 7 && home.rows <= 7, {
-    open: home.openTasks,
-    rows: home.rows,
-  });
-  check('the focus figure uses the one duration format', /^(\d+h \d{2}m|\d+m)$/.test(home.focus ?? ''), home.focus);
-  check('the overall figure is a percentage', /^\d+$/.test(home.progress ?? ''), home.progress);
-
-  // The cap: adding tasks stops at seven open, with the note shown. Measured at
-  // 1000×600, the tightest window the app allows.
-  await cdp.send('Emulation.setDeviceMetricsOverride', {
-    width: 1000,
-    height: 600,
-    deviceScaleFactor: 1,
-    mobile: false,
-  });
-  const cap = await page(`(async () => {
-    const input = document.querySelector('input[aria-label="Add a task"]');
-    const setValue = (el, value) => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-      setter.call(el, value);
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    };
-    // Fill the list up to the cap (it starts wherever the data left it).
-    for (let i = 0; i < 9; i++) {
-      const field = document.querySelector('input[aria-label="Add a task"]');
-      if (field.disabled) break;
-      setValue(field, 'Verification task ' + i);
-      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      await new Promise((r) => setTimeout(r, 140));
-    }
-    const note = document.body.innerText.includes('List is full');
-    const disabled = document.querySelector('input[aria-label="Add a task"]').disabled;
-    // The sweep below runs with whatever data is on disk, so measure the fit of
-    // a *full* list here — at the smallest supported window — while it exists.
-    const main = document.querySelector('main');
-    const overflow = Math.max(main.scrollHeight - main.clientHeight, main.scrollWidth - main.clientWidth);
-    // The cards clip their own overflow, so a squeezed list would be cut off
-    // without ever making main overflow. Measure the list itself too.
-    const list = document.querySelector('section[aria-labelledby="home-tasks"] ul');
-    const clipped = list ? Math.max(list.scrollHeight - list.clientHeight, list.scrollWidth - list.clientWidth) : 0;
-    // Clean up: delete the three we added (hover-only × buttons are still in the DOM).
-    const deletes = [...document.querySelectorAll('button[aria-label^="Delete Verification task"]')];
-    deletes.forEach((b) => b.click());
-    await new Promise((r) => setTimeout(r, 160));
-    return {
-      note,
-      disabled,
-      overflow,
-      clipped,
-      cleaned: [...document.querySelectorAll('button[aria-label^="Delete Verification task"]')].length,
-    };
-  })()`);
-  check('the list reports itself full at seven open tasks', cap.note && cap.disabled, cap);
-  check('a full task list still fits the smallest window', cap.overflow <= 1 && cap.clipped <= 1, cap);
-  check('and the verification tasks were cleaned up again', cap.cleaned === 0, cap);
-  await cdp.send('Emulation.clearDeviceMetricsOverride');
-
-  /* ---------------------------------------------------------- timer */
-  await tab('Timer');
-  // The timer remembers its mode between launches; start from Pomodoro so the
-  // Pomodoro-only controls are actually on screen.
-  await page(`(async () => {
-    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Pomodoro')?.click();
-    await new Promise((r) => setTimeout(r, 300));
-    return true;
-  })()`);
-  const timerIdle = await page(`(() => {
-    const seg = [...document.querySelectorAll('.seg button')].map((b) => b.textContent.trim());
-    const primary = document.querySelector('main button.btn-primary');
-    return {
-      seg,
-      primary: primary?.textContent.trim(),
-      roundDots: document.querySelectorAll('main [aria-hidden="true"] span.h-2').length,
-      editLink: /—\\s*Edit/.test(document.body.innerText),
-      ring: Boolean(document.querySelector('svg[aria-label*="remaining"]')),
-      ticks: document.querySelectorAll('svg[aria-label*="remaining"] line').length,
-      footer: /Today .* · \\d+ session/.test(document.body.innerText),
-      manual: document.body.innerText.includes('Add a session manually'),
-      tags: document.body.innerText.includes('Working on:'),
-    };
-  })()`);
-  check('Timer offers Pomodoro and Custom', timerIdle.seg.join(',') === 'Pomodoro,Custom', timerIdle.seg);
-  check('Timer leads with Start', timerIdle.primary === 'Start', timerIdle.primary);
-  check('the ring reports its remaining time to assistive tech', timerIdle.ring);
-  check('the dial draws a full minute rim of sixty ticks', timerIdle.ticks === 60, timerIdle.ticks);
-  check('Pomodoro shows its round dots', timerIdle.roundDots === 4, timerIdle.roundDots);
-  check('the lengths link to Settings', timerIdle.editLink);
-  check('the tag chips are on the timer screen', timerIdle.tags);
-  check('today’s figures sit in one footer line', timerIdle.footer);
-  check('a session can be added by hand', timerIdle.manual);
-
-  const custom = await page(`(async () => {
-    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Custom').click();
-    await new Promise((r) => setTimeout(r, 250));
-    const presets = [...document.querySelectorAll('main .chip')]
-      .map((c) => c.textContent.trim())
-      .filter((t) => /^\\d+ min$/.test(t));
-    const field = document.querySelector('input[aria-label="Timer length, hours and minutes"]');
-    return {
-      presets,
-      fieldValue: field?.value,
-      skip: document.body.innerText.includes('Skip'),
-      dots: document.querySelectorAll('main [aria-hidden="true"] span.h-2').length,
-    };
-  })()`);
-  check('Custom mode shows its presets', custom.presets.join(',') === '15 min,30 min,45 min,60 min,90 min', custom.presets);
-  check('Custom mode has an editable HH:MM field', /^\d{2}:\d{2}$/.test(custom.fieldValue ?? ''), custom.fieldValue);
-  check('Custom mode has no round dots and no Skip', custom.dots === 0 && !custom.skip, custom);
-
-  // Editing the field commits a new length, remembered across a mode switch.
-  const edited = await page(`(async () => {
-    const field = document.querySelector('input[aria-label="Timer length, hours and minutes"]');
-    field.focus();
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-    setter.call(field, '00:47');
-    field.dispatchEvent(new Event('input', { bubbles: true }));
-    field.blur();
-    await new Promise((r) => setTimeout(r, 250));
-    const after = document.querySelector('input[aria-label="Timer length, hours and minutes"]')?.value;
-    return { after };
-  })()`);
-  check('a typed length is accepted and remembered', edited.after === '00:47', edited);
-
-  // Start, then Space toggles, then reset discards.
-  const running = await page(`(async () => {
-    document.querySelector('main button.btn-primary').click();
-    await new Promise((r) => setTimeout(r, 400));
-    const label = document.querySelector('main button.btn-primary')?.textContent.trim();
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
-    await new Promise((r) => setTimeout(r, 300));
-    const afterSpace = document.querySelector('main button.btn-primary')?.textContent.trim();
-    return { label, afterSpace };
-  })()`);
-  check('Start begins the session', running.label === 'Pause', running);
-  check('Space pauses it again (Timer tab only)', running.afterSpace === 'Start', running);
-
-  const reset = await page(`(async () => {
-    const reset = [...document.querySelectorAll('main button')].find((b) => b.textContent.trim() === 'Reset');
-    reset.click();
-    await new Promise((r) => setTimeout(r, 300));
-    const clock = document.querySelector('main p.font-mono')?.textContent.trim();
-    const dialog = document.querySelector('[role="alert"]');
-    return { clock, confirmShown: Boolean(dialog), field: document.querySelector('input[aria-label="Timer length, hours and minutes"]')?.value };
-  })()`);
-  check('Reset under a minute discards without a confirmation', !reset.confirmShown, reset);
-
-  /* ------------------------------------------------- the timer persists */
-  // The clock lives in the main process against an end timestamp, so a full
-  // renderer reload (the harshest version of "minimise, tray, reload") must not
-  // stop it or reset it.
-  await tab('Timer');
-  // The digits are an odometer (each strip holds all ten glyphs), so read the
-  // clock the way assistive tech does: off the ring's label.
-  const readTimer = `(async () => {
-    await new Promise((r) => setTimeout(r, 400));
-    const ring = document.querySelector('svg[aria-label*="remaining"]');
-    const spoken = ring ? ring.getAttribute('aria-label') : '';
-    const tokens = spoken.replace(/[^0-9:]/g, ' ').trim().split(/[ ]+/);
-    const clock = tokens.filter((t) => /[0-9]/.test(t) && t.indexOf(':') >= 0)[0] ?? '';
-    const parts = clock.split(':').map(Number);
-    const seconds = parts.length === 2 && parts.every((n) => !Number.isNaN(n)) ? parts[0] * 60 + parts[1] : NaN;
-    const segment = [...document.querySelectorAll('.seg button')].find((b) => b.getAttribute('aria-pressed') === 'true');
-    return {
-      label: document.querySelector('main button.btn-primary')?.textContent.trim(),
-      clock: clock,
-      seconds: seconds,
-      mode: segment ? segment.textContent.trim() : null,
-      modeDisabled: [...document.querySelectorAll('.seg button')].every((b) => b.disabled),
-    };
-  })()`;
-  const startedForReload = await page(`(async () => {
-    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Pomodoro')?.click();
-    await new Promise((r) => setTimeout(r, 300));
-    document.querySelector('main button.btn-primary').click();
-    await new Promise((r) => setTimeout(r, 600));
-    return true;
-  })()`).then(() => page(readTimer));
-  await cdp.send('Page.reload', { ignoreCache: false });
-  await sleep(4000);
-  const afterReload = await tab('Timer').then(() => page(readTimer));
-  const elapsed = startedForReload.seconds - afterReload.seconds;
-  check('a running timer survives a reload (it lives in the main process)', startedForReload.label === 'Pause' && afterReload.label === 'Pause' && afterReload.mode === 'Pomodoro', { startedForReload, afterReload });
-  check('and it kept counting down while the window was away', elapsed >= 3 && elapsed <= 60, { before: startedForReload.clock, after: afterReload.clock, elapsed });
-  check('the mode switch is locked while the clock runs', afterReload.modeDisabled === true, afterReload);
-  await page(`(async () => {
-    [...document.querySelectorAll('main button')].find((b) => b.textContent.trim() === 'Reset')?.click();
-    await new Promise((r) => setTimeout(r, 300));
-    return true;
-  })()`);
-
-  /* --------------------------------------- the home card starts the clock */
-  await tab('Home');
-  const homeStart = await page(`(async () => {
-    const button = [...document.querySelectorAll('main button')].find((b) => b.className.includes('btn-primary'));
-    const label = button?.textContent.trim();
-    button?.click();
-    await new Promise((r) => setTimeout(r, 700));
-    const tab = document.querySelector('nav[aria-label="Sections"] button[aria-current="page"]')?.textContent.trim();
-    const timerButton = document.querySelector('main button.btn-primary')?.textContent.trim();
-    return { label, tab, timerButton };
-  })()`);
-  check('Start focus hands the job to the Timer and starts it', homeStart.label === 'Start focus' && homeStart.tab === 'Timer' && homeStart.timerButton === 'Pause', homeStart);
-
-  const homeRunning = await tab('Home').then(() =>
-    page(`(async () => {
-      await new Promise((r) => setTimeout(r, 400));
-      const button = document.querySelector('main button.btn-primary');
-      return { label: button?.textContent.replace(/[0-9]/g, '').trim(), hasClock: /[0-9]+:[0-9]{2}/.test(button?.textContent ?? ''), disabled: button?.disabled };
-    })()`),
-  );
-  check('Home offers Open timer while a session runs', homeRunning.label.startsWith('Open timer') && homeRunning.hasClock, homeRunning);
-  const backToTimer = await page(`(async () => {
-    document.querySelector('main button.btn-primary')?.click();
-    await new Promise((r) => setTimeout(r, 500));
-    const tab = document.querySelector('nav[aria-label="Sections"] button[aria-current="page"]')?.textContent.trim();
-    [...document.querySelectorAll('main button')].find((b) => b.textContent.trim() === 'Reset')?.click();
-    await new Promise((r) => setTimeout(r, 300));
-    return { tab };
-  })()`);
-  check('and Open timer comes back to the running clock', backToTimer.tab === 'Timer', backToTimer);
-
-  // Fullscreen: F11 in, Esc out.
-  const full = await page(`(async () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F11', bubbles: true }));
-    await new Promise((r) => setTimeout(r, 500));
-    const header = document.querySelector('header');
-    const seg = document.querySelector('.seg');
-    const primary = document.querySelector('main button.btn-primary')?.textContent.trim();
-    const extras = [...document.querySelectorAll('main button')].map((b) => b.textContent.trim());
-    return { header: Boolean(header), seg: Boolean(seg), primary, extras };
-  })()`);
-  check('fullscreen hides the shell chrome', !full.header && !full.seg, full);
-  check('fullscreen keeps the start control', full.primary === 'Start', full);
-  check('fullscreen drops the secondary controls', !full.extras.includes('Reset') && !full.extras.includes('Skip'), full.extras);
-  const left = await page(`(async () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    await new Promise((r) => setTimeout(r, 500));
-    return { header: Boolean(document.querySelector('header')), tab: document.querySelector('nav[aria-label="Sections"] button[aria-current="page"]')?.textContent.trim() };
-  })()`);
-  check('Esc leaves fullscreen and restores the tabs', left.header && left.tab === 'Timer', left);
-
-  /* ------------------------------------------------------- activity */
-  await tab('Activity');
-  const activity = await page(`(() => {
-    const cells = [...document.querySelectorAll('button[data-cell]')];
-    const levels = new Set(cells.map((c) => c.dataset.level));
-    const figures = [...document.querySelectorAll('main .grid-cols-4 > div')].map((d) => d.textContent.replace(/\\s+/g, ' ').trim());
-    const chart = document.querySelector('svg[role="img"][aria-label*="Focus time over"]');
-    return {
-      cells: cells.length,
-      columns: new Set(cells.map((c) => c.dataset.col)).size,
-      levels: [...levels].sort(),
-      figures,
-      chartLabel: chart?.getAttribute('aria-label'),
-      hasTagChart: document.body.innerText.includes('By tag'),
-      filters: [...document.querySelectorAll('.seg button')].map((b) => b.textContent.trim()),
-      caption: /(\\d+) active days in the last 12 months/.exec(document.body.innerText)?.[1],
-    };
-  })()`);
-  check('the heatmap is 53 weeks of seven days', activity.cells === 371 && activity.columns === 53, activity);
-  check('five intensity levels are in use', activity.levels.length >= 4 && activity.levels[0] === '0', activity.levels);
-  check('the four figures are on screen', activity.figures.length === 4, activity.figures);
-  check('the caption counts active days, not printed pages', /^\d+$/.test(activity.caption ?? ''), activity.caption);
-  check('the filter offers Combined/Focus/Movement/Tasks', activity.filters.join(',') === 'Combined,Focus,Movement,Tasks,30D,12W,1Y', activity.filters);
-  check('the chart summarises itself for assistive tech', /last 30 days/.test(activity.chartLabel ?? ''), activity.chartLabel);
-  check('the best day is never in the future', (() => {
-    const best = activity.figures.find((f) => f.startsWith('Best day')) ?? '';
-    const match = /· (\\d{1,2}) (\\w{3})/.exec(best);
-    if (!match) return true;
-    const month = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(match[2]);
-    const now = new Date();
-    if (month === -1) return true;
-    return month < now.getMonth() || (month === now.getMonth() && Number(match[1]) <= now.getDate());
-  })(), activity.figures);
-
-  const filterSwitch = await page(`(async () => {
-    const levelHash = () => [...document.querySelectorAll('button[data-cell]')].map((c) => c.dataset.level).join('');
-    const before = levelHash();
-    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Focus').click();
-    await new Promise((r) => setTimeout(r, 300));
-    const afterFocus = levelHash();
-    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === '12W').click();
-    await new Promise((r) => setTimeout(r, 300));
-    const label = document.querySelector('svg[role="img"][aria-label*="Focus time over"]')?.getAttribute('aria-label');
-    const streakLabel = document.body.innerText.match(/Streak · (\\w+)/)?.[1];
-    return { changed: before !== afterFocus, label, streakLabel };
-  })()`);
-  check('switching the filter repaints the heatmap', filterSwitch.changed);
-  check('the streak figure follows the filter', filterSwitch.streakLabel === 'Focus', filterSwitch);
-  check('the range toggle drives the chart', /last 12 weeks/.test(filterSwitch.label ?? ''), filterSwitch.label);
-
-  const tooltip = await page(`(async () => {
-    const cell = [...document.querySelectorAll('button[data-cell]')].filter((c) => c.dataset.level !== '0').pop();
-    cell.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-    cell.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 250));
-    const tip = document.querySelector('[data-tip="heatmap"]');
-    if (!tip) return { found: false };
-    const style = getComputedStyle(tip);
-    const box = tip.getBoundingClientRect();
-    const container = document.querySelector('button[data-cell]').parentElement.getBoundingClientRect();
-    return {
-      found: true,
-      // An opaque tooltip has no alpha channel: rgb(...) rather than rgba(..., 0).
-      opaque: style.backgroundColor.startsWith('rgb('),
-      inside: box.left >= container.left - 2 && box.right <= container.right + 2,
-      above: box.bottom <= cell.getBoundingClientRect().top + 2,
-      hasFigures: /focus · \\d+ min movement · \\d+ task/.test(tip.textContent),
-    };
-  })()`);
-  check('the tooltip appears', tooltip.found, tooltip);
-  check('the tooltip is opaque', tooltip.opaque, tooltip);
-  check('the tooltip is clamped inside the grid', tooltip.inside, tooltip);
-  check('the tooltip sits above the cell', tooltip.above, tooltip);
-  check('the tooltip carries the day’s figures', tooltip.hasFigures, tooltip);
-
-  const dayDialog = await page(`(async () => {
-    const cell = [...document.querySelectorAll('button[data-cell]')].filter((c) => c.dataset.level !== '0').pop();
-    cell.click();
-    await new Promise((r) => setTimeout(r, 400));
-    const dialog = document.querySelector('[role="dialog"]');
-    const text = dialog?.innerText ?? '';
-    const buttons = [...(dialog?.querySelectorAll('button') ?? [])].map((b) => b.getAttribute('aria-label') || b.textContent.trim());
-    return {
-      open: Boolean(dialog),
-      heading: dialog?.getAttribute('aria-label'),
-      hasAddSession: text.includes('Add session'),
-      hasAddMovement: text.includes('Add movement'),
-      hasFocusSection: text.includes('Focus sessions'),
-      hasMovementSection: text.includes('Movement'),
-      hasTasksSection: text.includes('Tasks done'),
-      deleteButtons: buttons.filter((b) => /^Delete/.test(b)).length,
-    };
-  })()`);
-  check('a day opens in a dialog', dayDialog.open && /\d{4}/.test(dayDialog.heading ?? ''), dayDialog);
-  check('the dialog edits sessions, movement and tasks', dayDialog.hasFocusSection && dayDialog.hasMovementSection && dayDialog.hasTasksSection, dayDialog);
-  check('the dialog can add a session and a movement', dayDialog.hasAddSession && dayDialog.hasAddMovement, dayDialog);
-  check('rows can be deleted in place', dayDialog.deleteButtons >= 0);
-
-  const closed = await page(`(async () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    await new Promise((r) => setTimeout(r, 300));
-    return !document.querySelector('[role="dialog"]');
-  })()`);
-  check('Esc closes the day dialog', closed === true);
-
-  /* ------------------------------------------------------- settings */
-  await tab('Settings');
-  const settings = await page(`(() => {
-    const cards = [...document.querySelectorAll('main section')].map((s) => s.querySelector('h2')?.textContent.trim());
-    return {
-      cards,
-      version: /Daybook (\\d+\\.\\d+\\.\\d+)/.exec(document.body.innerText)?.[1],
-      versionOnHome: false,
-      theme: [...document.querySelectorAll('.seg button')].map((b) => b.textContent.trim()),
-      toggles: [...document.querySelectorAll('[role="switch"]')].length,
-      goals: [...document.querySelectorAll('input[type="number"]')].length,
-      privacy: document.body.innerText.includes('Nothing is sent anywhere'),
-      erase: document.body.innerText.includes('Erase all data'),
-      removed: /Tick while running|Check for updates|Week starts|grace day|Backups|Colophon|Electron/i.test(document.body.innerText),
-      nameRow: (() => {
-        const card = document.querySelector('section[aria-labelledby="set-app"]');
-        const field = card ? card.querySelector('input[type="text"]') : null;
-        return field ? { label: field.getAttribute('aria-label'), value: field.value } : null;
-      })(),
-    };
-  })()`);
-  check('the name has a row of its own in App', settings.nameRow?.label === 'Your name' && settings.nameRow.value.length > 0, settings.nameRow);
-  check('Settings is four cards', settings.cards.join(',') === 'Daily goals,App,Timer,Data', settings.cards);
-  // Read from package.json rather than written here, so a version bump cannot
-  // leave this check asserting the release before last.
-  check(
-    `the version is ${pkg.version} and lives here`,
-    settings.version === pkg.version && settings.versionOnHome === false,
-    settings.version,
-  );
-  check('theme offers Auto, Light and Dark', settings.theme.join(',') === 'Auto,Light,Dark', settings.theme);
-  check('the switches are real switches', settings.toggles >= 5, settings.toggles);
-  check('the removed settings are gone', !settings.removed);
-  check('one destructive action, no extras', settings.erase && settings.privacy, settings);
-
-  // Clamp check: an absurd goal is clamped and the flash confirms the save.
-  const clamp = await page(`(async () => {
-    // Scoped to the Daily goals card: the Timer tab also has a field labelled
-    // "Focus in min", and querying by label alone read whichever came first in
-    // the DOM — which made this check pass or fail depending on tab order.
-    const find = () => document.querySelectorAll('section[aria-labelledby="set-goals"] input[aria-label="Focus in min"]');
-    const input = find()[0];
-    const original = input.value;
-    const limits = [...find()].map((i) => i.min + '–' + i.max);
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-    let blurred = false;
-    input.addEventListener('blur', () => { blurred = true; }, { once: true });
-    input.focus();
-    const focused = document.activeElement === input;
-    setter.call(input, '99999');
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    // A window that does not hold OS focus never fires a real blur — the element
-    // cannot become the focus owner — which made this check flaky depending on
-    // what else was on screen. focusout is the event React's onBlur listens for,
-    // so the commit is driven directly; when a real blur did fire this is a
-    // second, idempotent commit. The assertion is unchanged: the app must clamp
-    // the figure when the field is committed.
-    input.blur();
-    input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-    await window.__wait(() => find()[0]?.value !== '99999', 8000);
-    const clamped = find()[0]?.value;
-    const saved = await window.__wait(() => document.body.innerText.includes('Saved'), 1500);
-    // Restore the original goal so the run leaves no trace.
-    const field = find()[0];
-    setter.call(field, original);
-    field.dispatchEvent(new Event('input', { bubbles: true }));
-    field.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-    field.blur();
-    await new Promise((r) => setTimeout(r, 400));
-    return {
-      clamped,
-      saved,
-      restored: find()[0]?.value,
-      original,
-      // Diagnostics: a failed clamp is either "the app did not commit" or
-      // "the document did not focus", and those need different fixes.
-      fields: limits,
-      focused,
-      blurred,
-      pageFocused: document.hasFocus(),
-    };
-  })()`);
-  check('an out-of-range figure is clamped on blur', clamp.clamped === '720', clamp);
-  check('the save is confirmed quietly, not by a button', clamp.saved === true, clamp);
-  check('the verification restored the original goal', clamp.restored === clamp.original, clamp);
-
-  const theme = await page(`(async () => {
-    const before = document.documentElement.classList.contains('dark');
-    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Dark').click();
-    await new Promise((r) => setTimeout(r, 400));
-    const dark = document.documentElement.classList.contains('dark');
-    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Auto').click();
-    await new Promise((r) => setTimeout(r, 400));
-    const after = document.documentElement.classList.contains('dark');
-    return { before, dark, after };
-  })()`);
-  check('choosing Dark repaints the app as the night edition', theme.dark === true, theme);
-  check('and Auto returns it to the Windows setting', theme.after === theme.before, theme);
-
-  const erase = await page(`(async () => {
-    const started = Date.now();
-    [...document.querySelectorAll('main button')].find((b) => b.textContent.includes('Erase all data')).click();
-    await new Promise((r) => setTimeout(r, 350));
-    const dialog = document.querySelector('[role="dialog"]');
-    const open = Boolean(dialog);
-    const confirmButton = [...dialog.querySelectorAll('button')].find((b) => b.textContent.includes('Erase everything'));
-    const disabledBefore = confirmButton.disabled;
-    const field = dialog.querySelector('input');
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-    setter.call(field, 'delete');
-    field.dispatchEvent(new Event('input', { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 200));
-    const enabledAfter = ![...dialog.querySelectorAll('button')].find((b) => b.textContent.includes('Erase everything')).disabled;
-    // Cancel — never confirm a destructive dialog in a verification run.
-    [...dialog.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Cancel').click();
-    const closed = await window.__wait(() => !document.querySelector('[role="dialog"]'));
-    // How promptly the renderer answered, so a stalled window is visible in the
-    // failure rather than guessed at.
-    const tick = Date.now();
-    await new Promise((r) => setTimeout(r, 30));
-    return { open, disabledBefore, enabledAfter, closed, totalMs: Date.now() - started, tickMs: Date.now() - tick };
-  })()`);
-  check('Erase asks for a typed confirmation', erase.open && erase.disabledBefore === true && erase.enabledAfter === true, erase);
-  check('and cancelling closes it untouched', erase.closed === true, erase);
-
-  /* --------------------------------------------- keyboard tab order */
-  const keyboardTabs = await page(`(async () => {
-    const seen = [];
-    for (const combo of ['1', '2', '3', '4']) {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: combo, ctrlKey: true, bubbles: true }));
-      await new Promise((r) => setTimeout(r, 280));
-      seen.push(document.querySelector('nav[aria-label="Sections"] button[aria-current="page"]')?.textContent.trim());
-    }
-    return seen;
-  })()`);
-  check('Ctrl+1…4 walk the tabs', keyboardTabs.join(',') === 'Home,Timer,Activity,Settings', keyboardTabs);
-
-  /* ---------------------------------------------------- layout sweep */
-  // Ride out a cold machine: a freshly built binary can be scanned by the
-  // antivirus on first launch, and a covered window is throttled by Chromium.
-  if (!NO_RAISE) await cdp.send('Page.bringToFront').catch(() => {});
-  const cases = [
-    { label: '1000×600 @100%', width: 1000, height: 600, scale: 1 },
-    { label: '1280×720 @100%', width: 1280, height: 720, scale: 1 },
-    { label: '1280×720 @125%', width: 1280, height: 720, scale: 1.25 },
-    { label: '1366×768 @100%', width: 1366, height: 768, scale: 1 },
-    { label: '1366×768 @125%', width: 1366, height: 768, scale: 1.25 },
-    { label: '1920×1080 @100%', width: 1920, height: 1080, scale: 1 },
-    { label: '1920×1080 @125%', width: 1920, height: 1080, scale: 1.25 },
-    { label: '1920×1080 @150%', width: 1920, height: 1080, scale: 1.5 },
-  ];
-  const layoutFails = [];
-  for (const testCase of cases) {
-    await cdp.send('Emulation.setDeviceMetricsOverride', {
-      width: testCase.width,
-      height: testCase.height,
-      deviceScaleFactor: testCase.scale,
-      mobile: false,
-    });
-    const measured = await page(`(async () => {
-      const out = [];
-      const strip = document.querySelector('nav[aria-label="Sections"]');
-      for (const label of ['Home', 'Timer', 'Activity', 'Settings']) {
-        const button = [...strip.querySelectorAll('button')].find((b) => b.textContent.trim() === label);
-        button?.click();
-        await window.__wait(() => button?.getAttribute('aria-current') === 'page', 4000);
-        await new Promise((r) => setTimeout(r, 120));
-        const main = document.querySelector('main');
-        const root = document.documentElement;
-        const scrollables = [...document.querySelectorAll('*')].filter((el) => {
-          const style = getComputedStyle(el);
-          const canScroll = /(auto|scroll)/.test(style.overflowY) || /(auto|scroll)/.test(style.overflowX);
-          return canScroll && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1);
-        }).map((el) => el.tagName.toLowerCase() + '.' + String(el.className).split(' ').slice(0, 2).join('.'));
-        // Name the culprit when something does overflow: the check is only
-        // useful if a failure says *what* is too wide or too tall.
-        const box = main.getBoundingClientRect();
-        const wide = [...main.querySelectorAll('*')]
-          .filter((el) => {
-            const r = el.getBoundingClientRect();
-            return r.width > 2 && (r.right > box.right + 2 || r.left < box.left - 2);
-          })
-          .slice(0, 4)
-          .map((el) => el.tagName.toLowerCase() + '.' + String(el.className).split(' ')[0] + ' ' + Math.round(el.getBoundingClientRect().width) + 'px');
-        // A card clips its own overflow, so a row that does not fit is cut off
-        // silently: no scrollbar, no page overflow, just a missing line.
-        const clipped = [...main.querySelectorAll('.card-body')]
-          .map((el) => el.scrollHeight - el.clientHeight)
-          .filter((n) => n > 1);
-        out.push({
-          tab: label,
-          dy: root.scrollHeight - window.innerHeight,
-          dx: root.scrollWidth - window.innerWidth,
-          mdy: main.scrollHeight - main.clientHeight,
-          mdx: main.scrollWidth - main.clientWidth,
-          wide,
-          scrollables,
-          clipped,
-        });
-      }
-      return JSON.stringify(out);
-    })()`, 90_000);
-    for (const row of measured) {
-      const clean =
-        row.dy <= 1 && row.dx <= 1 && row.mdy <= 1 && row.mdx <= 1 &&
-        row.scrollables.length === 0 && row.clipped.length === 0;
-      if (!clean) layoutFails.push({ case: testCase.label, ...row });
-    }
-  }
-  // (each case evaluates the whole DOM four times; slow machines need room)
-  await cdp.send('Emulation.clearDeviceMetricsOverride');
-  check(
-    'no tab scrolls or clips at any supported size or scaling',
-    layoutFails.length === 0,
-    layoutFails.slice(0, 4),
-  );
-
-  /* ------------------------------------------------- text legibility */
-  // Every visible piece of text must be at least 12px and reach 4.5:1 against
-  // the colour actually painted behind it. Run over a root selector so the
-  // dialogs (which live outside `main`) can be measured too.
-  const legibilityProbe = (rootSelector) => `(async function () {
-    var luminance = function (rgb) {
-      var channel = function (v) {
-        var c = v / 255;
-        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-      };
-      return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
-    };
-    var parse = function (value) {
-      var parts = value.replace(/[^0-9.,]/g, ' ').trim().split(/[ ,]+/).map(Number);
-      if (parts.length < 3 || parts.some(function (n) { return Number.isNaN(n); })) return null;
-      return { rgb: [parts[0], parts[1], parts[2]], alpha: parts.length > 3 ? parts[3] : 1 };
-    };
-    var behind = function (el) {
-      var node = el;
-      while (node) {
-        var bg = getComputedStyle(node).backgroundColor;
-        var parsed = parse(bg);
-        if (parsed && parsed.alpha > 0.95) return parsed.rgb;
-        node = node.parentElement;
-      }
-      return [255, 255, 255];
-    };
-    var bad = [];
-    var worst = null;
-    var tabs = ['Home', 'Timer', 'Activity', 'Settings'];
-    var worstRatio = 99;
-    var roots = ${JSON.stringify(rootSelector)} === 'main *' ? tabs : ['dialog'];
-    for (var i = 0; i < roots.length; i++) {
-      if (roots[i] !== 'dialog') {
-        var button = [].slice.call(document.querySelectorAll('nav[aria-label="Sections"] button'))
-          .filter(function (b) { return b.textContent.trim() === roots[i]; })[0];
-        if (button) button.click();
-        await new Promise(function (r) { setTimeout(r, 260); });
-      }
-      var nodes = document.querySelectorAll(${JSON.stringify(rootSelector)});
-      for (var n = 0; n < nodes.length; n++) {
-        var el = nodes[n];
-        // ASCII marks are ornamental, not reading text: they are allowed to be
-        // smaller than the 12px type floor and are marked as such in the DOM.
-        if (el.closest && el.closest('[data-ornament]')) continue;
-        var own = '';
-        for (var c = 0; c < el.childNodes.length; c++) {
-          if (el.childNodes[c].nodeType === 3) own += el.childNodes[c].nodeValue;
-        }
-        own = own.trim();
-        if (!own) continue;
-        var rect = el.getBoundingClientRect();
-        if (rect.width < 3 || rect.height < 3) continue;
-        var style = getComputedStyle(el);
-        if (style.visibility === 'hidden' || style.opacity === '0') continue;
-        // Screen-reader-only text is deliberately not painted: the 1px clipped
-        // box would otherwise read as a contrast failure.
-        if (style.clip === 'rect(0px, 0px, 0px, 0px)' || style.clipPath === 'inset(50%)') continue;
-        var size = parseFloat(style.fontSize);
-        var fg = parse(style.color);
-        if (!fg) continue;
-        var bg = behind(el);
-        var a = luminance(fg.rgb);
-        var b = luminance(bg);
-        var ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-        var where = roots[i] + ' · ' + el.tagName.toLowerCase() + '.' + String(el.className).split(' ')[0];
-        var label = own.slice(0, 30);
-        if (size < 12 - 0.01) bad.push({ where: where, size: Math.round(size * 10) / 10, text: label });
-        else if (ratio < 4.5 && worstRatio > ratio) {
-          worstRatio = ratio;
-          worst = { where: where, ratio: Math.round(ratio * 100) / 100, size: Math.round(size), text: label };
-        }
-      }
-    }
-    return JSON.stringify({ bad: bad.slice(0, 8), badCount: bad.length, worst: worst });
-  })()`;
-
-  const legibility = await page(legibilityProbe('main *'), 90_000);
-  check('all text is at least 12px', legibility.badCount === 0, legibility.bad);
-  check('all text reaches 4.5:1 contrast', legibility.worst === null, legibility.worst);
-
-  // The dialogs: the disabled "Erase everything" button and the day editor are
-  // where a washed-out accent fill would hide.
-  const eraseLight = await page(`(async () => {
-    [...document.querySelectorAll('main button')].find((b) => b.textContent.includes('Erase all data'))?.click();
-    await new Promise((r) => setTimeout(r, 350));
-    return Boolean(document.querySelector('[role="dialog"]'));
-  })()`);
-  const dialogLegibility = eraseLight ? await page(legibilityProbe('[role="dialog"] *, [role="dialog"]'), 60_000) : null;
-  check('the erase dialog is legible too', dialogLegibility !== null && dialogLegibility.badCount === 0 && dialogLegibility.worst === null, dialogLegibility);
-  await page(`(async () => {
-    [...document.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent.trim() === 'Cancel')?.click();
-    return await window.__wait(() => !document.querySelector('[role="dialog"]'));
-  })()`);
-
-  /* --------------------------------------------------------- shots */
-  if (SHOTS) {
-    const dir = path.resolve(root, SHOTS);
-    fs.mkdirSync(dir, { recursive: true });
-    await cdp.send('Emulation.setDeviceMetricsOverride', {
-      width: Number.isFinite(SHOT_SIZE[0]) ? SHOT_SIZE[0] : 1280,
-      height: Number.isFinite(SHOT_SIZE[1]) ? SHOT_SIZE[1] : 720,
-      deviceScaleFactor: 1,
-      mobile: false,
-    });
-    const shotLabels = ['Home', 'Timer', 'Activity', 'Settings'];
-    const captured = [];
-    for (const label of shotLabels) {
-      await tab(label);
-      const shot = await capture();
-      if (!shot) {
-        warn(`[verify] could not capture the ${label} tab — the window is not compositing`);
-        continue;
-      }
-      fs.writeFileSync(path.join(dir, `${label.toLowerCase()}.png`), Buffer.from(shot.data, 'base64'));
-      captured.push(label);
-    }
-    await cdp.send('Emulation.clearDeviceMetricsOverride');
-
-    // One page to review the first-run screen and the tabs side by side, with
-    // the captions that matter for a visual pass. The images are referenced,
-    // not embedded, so the gallery stays small and can be rebuilt in place.
-    const figures = [
-      ...(fs.existsSync(path.join(dir, 'welcome.png')) ? ['Welcome'] : []),
-      ...captured,
-    ]
-      .map(
-        (label) =>
-          `<figure><figcaption>${label}</figcaption>` +
-          `<img src="./${label.toLowerCase()}.png" alt="Daybook ${label}"></figure>`,
-      )
-      .join('\n');
-    fs.writeFileSync(
-      path.join(dir, 'gallery.html'),
-      `<!doctype html><meta charset="utf-8"><title>Daybook 1.2.0 — first run and the four tabs</title>
-<style>
-  body{margin:0;background:#111;color:#eee;font:13px/1.4 system-ui;padding:16px}
-  h1{font-size:15px;font-weight:600;margin:0 0 4px}
-  p.lede{margin:0 0 16px;opacity:.65}
-  figure{margin:0 0 24px}
-  figcaption{text-transform:uppercase;letter-spacing:.12em;font-size:11px;opacity:.7;margin-bottom:6px}
-  img{width:1280px;max-width:100%;height:auto;display:block;border:1px solid #333;border-radius:4px}
-</style>
-<h1>Daybook 1.2.0</h1>
-<p class="lede">The first-run screen (at 1536×1024) and the four tabs (at 1280×720), from the packaged build.</p>
-${figures}
-`,
-      'utf8',
-    );
-    console.log(`\u001b[2mscreenshots + gallery.html → ${path.relative(root, dir)}\u001b[0m`);
-  }
-
-  /* --------------------------------------------------------- cleanup */
-  const tidy = await page(`(async () => {
-    [...document.querySelectorAll('nav[aria-label="Sections"] button')].find((b) => b.textContent.trim() === 'Timer')?.click();
-    await new Promise((r) => setTimeout(r, 250));
-    // Leave the app as we found it: Pomodoro, stopped, at its full length.
-    [...document.querySelectorAll('.seg button')].find((b) => b.textContent.trim() === 'Pomodoro')?.click();
-    await new Promise((r) => setTimeout(r, 250));
-    const reset = [...document.querySelectorAll('main button')].find((b) => b.textContent.trim() === 'Reset');
-    reset?.click();
-    await new Promise((r) => setTimeout(r, 250));
-    const primary = document.querySelector('main button.btn-primary')?.textContent.trim();
-    return { primary };
-  })()`);
-  check('the run leaves the timer stopped and tidy', tidy.primary === 'Start', tidy);
-
-  /* --------------------------------------------------------- console */
-  const errors = await page('JSON.stringify(window.__errors || [])');
-  check('the renderer logged no errors or warnings', Array.isArray(errors) && errors.length === 0, errors);
+  check('the upgrade gains a note sheet without touching old data', typeof afterUpgrade?.notes?.html === 'string', afterUpgrade?.notes);
 
   await endSession();
-
-  /* ================================================================== *
-   * Phase 3 — a named document is never asked again.
-   * ================================================================== */
-
   await beginSession({ DAYBOOK_DATA_DIR: upgradeDir });
   const settled = await page(`(async () => {
-    // Long enough that a screen on its way would have arrived.
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 1200));
     return {
       welcome: Boolean(document.querySelector('#daybook-welcome')),
-      header: Boolean(document.querySelector('header')),
-      tabs: Boolean(document.querySelector('nav[aria-label="Sections"]')),
-      heading: document.querySelector('main h1')?.textContent.trim() ?? null,
+      aside: Boolean(document.querySelector('aside')),
+      heading: document.querySelector('header h1')?.textContent.trim() ?? null,
     };
   })()`);
-  check('a saved name means the Welcome screen never comes back', settled.welcome === false, settled);
-  check(
-    'the app opens straight into Home, under that name',
-    settled.header && settled.tabs && settled.heading === 'Today, Grace Murray Hopper',
-    settled,
-  );
-  check(
-    'and a second launch takes no further pre-migration copy',
-    fs.readdirSync(path.join(upgradeDir, 'backups')).filter((f) => f.startsWith('pre-')).length === 1,
-    fs.readdirSync(path.join(upgradeDir, 'backups')),
-  );
+  check('a saved name means the Welcome screen never comes back', settled.welcome === false && settled.aside, settled);
+  check('the second launch opens Home under that name', settled.heading === 'Today, Grace Hopper-Wells', settled);
+
   await endSession();
 
   /* ================================================================== *
-   * Phase 4 — DAYBOOK_FORCE_ONBOARDING=1 asks for it again, for review.
+   * Phase 8 — forced onboarding remains available for review.
    * ================================================================== */
 
   await beginSession({ DAYBOOK_DATA_DIR: upgradeDir, DAYBOOK_FORCE_ONBOARDING: '1' });
   const forced = await page(`(async () => {
-    await new Promise((r) => setTimeout(r, 800));
-    const heading = document.getElementById('welcome-heading');
+    await new Promise((r) => setTimeout(r, 700));
     return {
       welcome: Boolean(document.querySelector('#daybook-welcome')),
-      heading: heading ? heading.textContent.replace(/\\s+/g, ' ').trim() : null,
-      named: Boolean(document.querySelector('main h1')),
+      heading: document.getElementById('welcome-heading')?.textContent.trim() ?? null,
     };
   })()`);
-  check('DAYBOOK_FORCE_ONBOARDING=1 brings the screen back for testing', forced.welcome === true, forced);
-  check(
-    'and the forced screen is the same one, not a fallback',
-    forced.heading === 'What shall we call you, Knight?' && forced.named === false,
-    forced,
-  );
-  // Left running only for `--keep-open`; the review session is the last one.
+  check('DAYBOOK_FORCE_ONBOARDING=1 brings the screen back', forced.welcome === true && forced.heading === 'What should we call you?', forced);
   if (!KEEP_OPEN) await endSession();
 
   /* ------------------------------------------------------ the bundle */
-  // What the installer actually carries for the photograph: one optimised file,
-  // never the multi-megabyte PNG it was cut from.
   const assetDir = path.join(root, 'dist', 'assets');
   const shipped = fs.existsSync(assetDir) ? fs.readdirSync(assetDir) : [];
-  const pictures = shipped.filter((f) => /\.(webp|avif|png|jpe?g)$/i.test(f));
-  check(
-    'the title page ships no photograph at all',
-    pictures.length === 0,
-    { pictures },
-  );
+  check('the installer ships no photograph at all', !shipped.some((f) => /\\.(webp|avif|png|jpe?g)$/i.test(f)), shipped);
 
   /* ---------------------------------------------------------- report */
   const failed = results.filter((r) => !r.ok);
-  console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
+  console.log(`\\n${results.length - failed.length}/${results.length} checks passed`);
   if (failed.length) {
-    console.log('\nFailures:');
+    console.log('\\nFailures:');
     for (const f of failed) console.log(`  • ${f.name}${f.detail === undefined ? '' : ` — ${JSON.stringify(f.detail)}`}`);
-    if (appLog.trim()) console.log(`\nApp log:\n${appLog.trim().split('\n').slice(-25).join('\n')}`);
+    if (appLog.trim()) console.log(`\\nApp log:\\n${appLog.trim().split('\\n').slice(-30).join('\\n')}`);
   }
-  if (KEEP_OPEN) console.log('\n--keep-open: the app is still running.');
+  if (KEEP_OPEN) console.log('\\n--keep-open: the app is still running.');
   else shutdown();
   process.exit(failed.length ? 1 : 0);
 } catch (error) {
-  console.error(`\nverify failed: ${error.message}`);
-  if (appLog.trim()) console.error(`\nApp log:\n${appLog.trim().split('\n').slice(-30).join('\n')}`);
+  console.error(`\\nverify failed: ${error.message}`);
+  if (appLog.trim()) console.error(`\\nApp log:\\n${appLog.trim().split('\\n').slice(-35).join('\\n')}`);
   shutdown();
   process.exit(2);
 }

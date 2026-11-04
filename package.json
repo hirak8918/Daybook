@@ -1,8 +1,8 @@
 {
   "name": "daybook",
   "productName": "Daybook",
-  "version": "1.4.0",
-  "description": "Daybook — a small, calm desktop tracker: focus, movement and tasks in four tabs.",
+  "version": "2.0.0",
+  "description": "Daybook — a notes-first desktop notebook with a task list and a focus timer.",
   "author": {
     "name": "Daybook Press",
     "email": "press@daybook.local"
@@ -22,13 +22,17 @@
     "test": "node scripts/test.mjs",
     "inspect": "node scripts/inspect.mjs",
     "verify": "node scripts/verify.mjs",
-    "dist": "npm run build && electron-builder --win nsis --x64",
-    "dist:portable": "npm run build && electron-builder --win portable --x64",
-    "dist:all": "npm run build && electron-builder --win --x64"
+    "dist": "npm run build && electron-builder --win nsis --x64"
   },
   "devDependencies": {
     "@fontsource-variable/fraunces": "^5.1.0",
     "@fontsource/jetbrains-mono": "^5.1.1",
+    "@tiptap/core": "^2.27.3",
+    "@tiptap/extension-placeholder": "^2.27.3",
+    "@tiptap/extension-text-style": "^2.27.3",
+    "@tiptap/extension-underline": "^2.27.3",
+    "@tiptap/react": "^2.27.3",
+    "@tiptap/starter-kit": "^2.27.3",
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",

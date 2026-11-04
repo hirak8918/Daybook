@@ -1,17 +1,15 @@
 # Daybook
 
-**A small, calm desktop tracker for the work you meant to do.** Four tabs — Home,
-Timer, Activity, Settings — and every one of them fits on a single screen with no
-scrolling. One window, one JSON file, no account, no network code at all.
+**Notes, tasks and focus time, in one quiet window.**
 
-**Latest release:** [v1.4.0](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
+Daybook is a Windows desktop notebook for the work in front of you. Write in one
+rich-text page, keep a short list of tasks beside it, then start a focus session
+on the Timer. Activity shows what the week actually looked like. One window, one
+JSON file, no account, no network code.
 
-![The first-run page: cream paper under a hairline grid, the question "What shall we call you, Knight?" in the left column, a ruled name field with an accent Begin block, and a slowly turning circular seal on the right](docs/screenshots/welcome.webp)
+**Latest release:** [v2.0.0](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
 
-Daybook keeps the printed-page identity of the earlier releases — warm paper, the
-Fraunces / Geist / JetBrains Mono trio (bundled, so it renders offline), one
-vermilion accent — and nothing else. No sidebar, no command palette, no status
-bar, no vanity numbers.
+![Daybook's Welcome screen: a cream page with the wordmark and the single question "What should we call you?" above a boxed name field](docs/screenshots/welcome.webp)
 
 ## Contents
 
@@ -30,64 +28,73 @@ bar, no vanity numbers.
 
 ## Download
 
-Grab the newest build from [**Releases**](../../releases/latest). Both files are
-the same app; pick the one that suits you:
+Grab the newest build from [**Releases**](../../releases/latest).
 
 | File | What it is |
 |---|---|
-| `Daybook-Setup-1.4.0.exe` | Installer. Per-user, no admin rights, choose the folder, desktop + Start Menu shortcuts, clean uninstaller that leaves your data alone. |
-| `Daybook-Portable-1.4.0.exe` | Single file, nothing installed. Runs from a USB stick or a Downloads folder; its data still lives in `%APPDATA%\Daybook`. |
+| `Daybook-Setup-2.0.0.exe` | The installer. Per-user, no admin rights, choice of folder, desktop and Start Menu shortcuts, and a clean uninstaller that leaves your data alone. |
 
-**Requirements:** Windows 10 1809 or newer, or Windows 11, x64. 1000 × 600 is
-the smallest window Daybook will draw itself in.
+**Requirements:** Windows 10 1809 or newer, or Windows 11, x64. 1000 × 600 is the
+smallest window Daybook draws itself in.
 
-The builds are not code-signed, so the first launch shows Windows SmartScreen —
-click **More info → Run anyway**. See [that section](#packaging-and-the-smartscreen-warning)
-for how to remove the warning properly.
+The installer is not code-signed, so the first launch shows Windows SmartScreen:
+click **More info → Run anyway**. See
+[that section](#packaging-and-the-smartscreen-warning) for how to remove the
+warning properly.
+
+Portable builds are gone in 2.0.0. There is one installer and no other target.
 
 ## What it does
 
-Daybook answers four questions and then gets out of the way.
-
 | Tab | The one thing you do there |
 |---|---|
-| **Home** | See today at a glance — focus time, movement, a rolling to-do list — and start either of the first two with a single button. |
-| **Timer** | Run a Pomodoro or a custom-length focus session. It keeps counting while minimised, in the tray, or after a restart, and logs itself when it ends. |
-| **Activity** | Look back: a five-level calendar heatmap, a focus chart over 30 days / 12 weeks / 1 year, and a by-tag breakdown. Click any day to correct it. |
-| **Settings** | Adjust goals, timer lengths, tags and name. Everything saves as you type. |
+| **Home** | Write. The page is a single rich-text note — bold, italic, underline, and four fixed text sizes. Focus today and the task list sit in the margin. There is no timer button here; starting work belongs to the Timer. |
+| **Timer** | Run a Pomodoro or a custom-length session. It keeps counting while minimised, in the tray, or after a restart, and logs itself when it ends. |
+| **Activity** | See the shape of your focus: today, this week, the current streak, a 30-day chart and a year calendar. Click a day to correct its sessions or completed tasks. |
+| **Settings** | Goals, name and theme, timer lengths, and the data tools. Four plain cards; everything saves as you type or leave the field. |
 
-A new install is greeted **once**, by name:
+The first page is one question. No photograph, no seal, no helper copy:
 
-> *What shall we call you, Knight?*
+> *What should we call you?*
 
-Type it, press Enter, and you are in. The name then appears in exactly two
-places — the Home heading (`Today, Ada`) and an editable **Name** row in
-Settings → App — and the screen never returns. It is asked on a cream title
-page, under a slowly turning seal, and nothing on that page is a photograph.
+Type a name, press Enter, and the app says it back before opening Home. The name
+appears in the page title (`Today, Ada`) and as an editable **Name** row in
+Settings → App. It is asked once.
+
+The note is one document, not one note per day. It autosaves 400 ms after you stop
+typing and flushes when the editor loses focus or the tab changes. The editor's
+schema knows only paragraphs, hard breaks, bold, italic, underline and a size
+mark, so pasted markup cannot smuggle anything else into the file. The task list
+is one rolling list; completing an item removes it and offers Undo, and at most
+seven items are open at once.
 
 The rules the interface is built on:
 
-1. **One screen, no scroll.** No tab, panel, sidebar or window shows a scrollbar,
-   from 1000 × 600 to 1920 × 1080 at 100 / 125 / 150 % scaling.
-2. **One primary action per screen.**
-3. **Never the same number twice on one screen.**
-4. **Plain words** on every label.
-5. **Delete, don't hide** — removed features take their code with them, while
-   stored data stays intact and readable.
+1. **One screen, no scroll.** No tab, panel, sidebar or window shows a page
+   scrollbar from 1000 × 600 to 1920 × 1080. Only a long note scrolls inside its
+   page, and the day dialog scrolls when a day has more rows than fit.
+2. **One primary action per screen.** Start focus exists only on Timer.
+3. **Every label is at least 12 px** and clears 4.5:1 contrast.
+4. **No explanatory paragraphs.** A heading, a label, a value. Nothing that
+   explains the obvious.
+5. **Reduced motion is honoured**, along with Windows High Contrast.
+
+A fresh data file includes a short demo back catalogue so the Activity charts are
+not blank on the first launch. **Settings → Data → Erase all data** clears the
+demo, every note and every task while keeping your name.
 
 ## Screens
 
-These captures are the night edition; Daybook opens in whichever edition Windows
-is using, and Settings → App can pin either. Both editions share one set of
-tokens, so nothing below changes shape between them.
+These captures are the night edition at 1440 × 900. Daybook opens in whichever
+edition Windows is using; Settings → App can pin light or dark.
 
 | Home | Timer |
 |---|---|
-| ![Home at night: an edition line above today's date, a boxed streak and score, and three columns for Focus, Movement and Tasks, with Start focus at the foot of the Focus card](docs/screenshots/home.webp) | ![Timer: a large sixty-tick dial reading 25:00 with a travelling accent arc, Pomodoro and Custom modes, tag chips and one primary Start button](docs/screenshots/timer.webp) |
+| ![Home: a large note page with a formatting toolbar and a typed note, beside a Focus today card and a task list](docs/screenshots/home.webp) | ![Timer: a large sixty-tick dial reading 25:00, Pomodoro and Custom modes, tag chips, and one primary Start button](docs/screenshots/timer.webp) |
 
 | Activity | Settings |
 |---|---|
-| ![Activity: four figures across the top, a five-level year heatmap, and a focus chart beside a by-tag breakdown](docs/screenshots/activity.webp) | ![Settings: four numbered cards of quiet rows that save as you type, each with a colophon at its foot](docs/screenshots/settings.webp) |
+| ![Activity: Today, This week and Streak figures above a 30-day focus chart and a year heatmap](docs/screenshots/activity.webp) | ![Settings: four plain cards — Goals, App, Timer and Data](docs/screenshots/settings.webp) |
 
 ## Where your data lives
 
@@ -104,128 +111,105 @@ a crash mid-write can never leave a half-written file. Every save rotates a
 backup, and a corrupt live file is recovered from the newest readable one at
 startup. **Export** and **Import** (Settings → Data) use native Windows dialogs.
 
-### The document (schema v3)
+### The document (schema v4)
 
 ```jsonc
 {
-  "version": 3,
+  "version": 4,
   "createdAt": "…",                  // first launch, for the record
   "settings": { "goals": {…}, "pomodoro": {…}, "tags": [ … ], "theme": "system", … },
-  "days": { "2026-10-08": { "sessions": [ … ], "movements": [ … ], "tasks": [ … ], "note": "" } },
+  "notes": {
+    "html": "<p><strong>Ship</strong> the redesign.</p>",
+    "updatedAt": "…"                  // advances on every save, never repeats
+  },
+  "days": {
+    "2026-11-04": {
+      "sessions": [ … ],              // focus time
+      "movements": [ … ],             // retained; movement left the UI in 2.0.0
+      "tasks": [ … ],                 // completion is stamped when it happens
+      "note": ""                      // legacy daily note, kept for old documents
+    }
+  },
   "timer": { "mode": "focus", "endsAt": 1759…, "customMinutes": 30, … },
-  "meta": { "launches": 12, "seeded": true, "tasksStartAt": "2026-10-08" },
-
-  // Written by the Welcome screen. Absent until a name has been given — which is
-  // exactly the condition that shows it: a document with no `profile.name` has
-  // never been greeted.
+  "meta": { "launches": 12, "seeded": true, "tasksStartAt": "2026-11-04" },
   "profile": { "name": "Ada Lovelace", "createdAt": "…" },
   "onboarding": { "completed": true, "version": 1 }
 }
 ```
 
+- **The Home note is `notes`.** One `html` string plus the moment it changed. It is
+  capped at 200,000 characters on read and in the reducer.
 - **Sessions** are focus time: `{ tag, startedAt, minutes, auto }`.
-- **Movements** are `{ type, minutes, intensity, at }`.
-- **Tasks** live inside the day they were written in, which is what keeps the
-  history honest: a task finished today counts today (`doneAt`) even if it was
-  written a fortnight ago.
-- **`meta.tasksStartAt`** is the day the single rolling to-do list began. Open
-  tasks written before it belong to the retired per-day editions; they stay in
-  the file byte for byte, and are simply not listed.
+- **Tasks** live in the day they were written, and a completed task counts on the
+  day its `doneAt` stamp says. Finishing an old task today counts today.
+- **`meta.tasksStartAt`** anchors the single rolling list. Open tasks from the
+  retired per-day editions remain in the file, unlisted.
+- **Movement** data stays in the document, but 2.0.0 has no movement controls, no
+  movement chart and no movement filter. The schema keeps the field so an old
+  file loses nothing.
 
 Migrations are idempotent and each is preceded by a raw copy of the file in
-`backups\pre-<version>-<timestamp>.json`, so an upgrade can always be wound back
-by hand. Nothing is ever deleted by a migration — sessions, movement, tasks,
-goals and old daily notes all survive.
-
-`profile` and `onboarding` arrived in v3 and are purely additive: the v2 → v3
-migration writes nothing at all, because a document without a name is the one
-that should be greeted. That is also what greets an owner upgrading from
-v1.0.0 — once. **Erase all data** keeps the name (who you are is not part of
-what you tracked), so the Welcome screen cannot come back after it. A
-hand-edited name the interface would refuse (digits, punctuation, over 24
-characters) is treated as no name rather than printed back.
-
-### The rolling task list
-
-Home shows **one** list, not one per day. Completing a task removes it and counts
-toward "N of 5 done today", with an *Undo* toast for five seconds. At most seven
-(`MAX_OPEN_TASKS`) are open at once — at the cap the input is disabled with
-"List is full — finish or delete one." — which is what makes the no-scroll rule
-possible.
-
-### Streak rules
-
-A day counts toward a run when the goal being measured was met; the filter above
-the heatmap picks Combined, Focus, Movement or Tasks. One missed day per week
-keeps the run alive without adding to it. Today never breaks a run — the day is
-still in progress — so an unmet today simply does not add to the count yet.
+`backups\pre-<version>-<timestamp>.json`. The v3 → v4 migration adds the note
+sheet without touching sessions, movement, tasks or old daily notes. A document
+without a profile name is greeted once; an existing name is never asked for
+again. **Erase all data** keeps the name.
 
 ## Build from source
 
 ```powershell
-npm install          # also downloads the Electron runtime (~110 MB), offline thereafter
+npm install          # also downloads the Electron runtime (~110 MB)
 npm run dev          # Vite dev server + Electron with hot reload
-npm run dist:all     # build, then package the installer and the portable exe
+npm run dist         # build, then package the installer
 ```
 
-Everything works from `cmd.exe` too: every script is cross-platform Node tooling,
-with no dependency on a POSIX shell.
+Everything works from `cmd.exe` too: every script is cross-platform Node tooling.
 
 | Script | What it does |
 |---|---|
 | `npm run dev` | Vite dev server + Electron with hot reload |
-| `npm run build` | Production build of the renderer and of main/preload |
+| `npm run build` | Production build of the renderer and main/preload |
 | `npm run dist` | Build, then package the NSIS installer |
-| `npm run dist:portable` | Build, then package the portable exe |
-| `npm run dist:all` | Build, then package both |
-| `npm test` | 292 self-tests over the reducer, storage, statistics, names and timer |
-| `npm run typecheck` | `tsc --noEmit` for the renderer and for the main process |
-| `npm run verify` | 141 acceptance checks driven against the real app over CDP |
+| `npm test` | 307 self-tests over the reducer, storage, statistics, notes, names and timer |
+| `npm run typecheck` | `tsc --noEmit` for the renderer and the main process |
+| `npm run verify` | 113 acceptance checks driven against the built app over CDP |
 | `npm run inspect` | Attach to a running build over CDP and evaluate expressions |
-| `npm run assets` | Regenerate icons, copy the fonts, optimise the three photographs |
+| `npm run assets` | Regenerate icons, copy fonts, and keep the archived source plates optimised |
 
-`npm run assets` runs automatically before `dev` and `build`, so nothing in
-`src/assets` is ever hand-made:
-
-- **Fonts** (`scripts/copy-fonts.mjs`) are copied from the `@fontsource` and
-  `geist` packages into `src/assets/fonts` and declared in
-  `src/styles/fonts.css`. Nothing is fetched at runtime.
-- **The welcome plates** (`scripts/optimise-images.mjs`) are encoded from
-  `assets/onboarding/welcome-{hills,forest}.jpg` and `welcome-bg.png` into WebPs
-  at quality 80 and 1920 px wide, with `sharp`, locally. They ship at 88 kB,
-  126 kB and 259 kB — 476 kB for all three, inside the 600 kB the release budget
-  allows — and they are never upscaled: a wider encode of a smaller original
-  would carry no extra detail, only bytes. Only the WebPs are bundled; the
-  multi-megabyte sources never reach the installer.
+The asset step runs automatically before `dev` and `build`. Fonts are copied from
+the `geist` and `@fontsource` packages into `src/assets/fonts` and declared in
+`src/styles/fonts.css`; nothing is fetched at runtime.
 
 ## Release assets
 
-Each release is tagged `v<major>.<minor>.<patch>` and carries two Windows x64
-executables, named from the same template in `electron-builder.yml`:
+Each release is tagged `v<major>.<minor>.<patch>`. Since 2.0.0 it carries exactly
+one Windows x64 executable:
 
 | Tag | Asset | Built by |
 |---|---|---|
-| `v1.4.0` | `Daybook-Setup-1.4.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
-| `v1.4.0` | `Daybook-Portable-1.4.0.exe` | `npm run dist:portable` → `portable.artifactName: Daybook-Portable-${version}.${ext}` |
+| `v2.0.0` | `Daybook-Setup-2.0.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
 
-The version lives in one place — `version` in `package.json` — and is read back
-at runtime for the single line in Settings that shows it. `release/` is
-git-ignored on purpose: builds are published as release assets, never committed.
+The version lives in `package.json` and is read back at runtime for the one line
+in Settings that shows it. `release/` is git-ignored: builds are published as
+release assets, never committed.
+
+The 1.4.0 source commit was never published as a GitHub release. **v2.0.0** is the
+next release after v1.3.0 and the release that fixes that gap. The portable target
+and its scripts were removed from the tree in 2.0.0; the installer is the only
+build.
 
 ## Keyboard
 
 | Keys | Action |
 |---|---|
 | `Ctrl+1` … `Ctrl+4` | Home · Timer · Activity · Settings |
-| `Space` | Start / pause (Timer tab only, ignored while typing) |
+| `Space` | Start / pause (Timer tab only, ignored while typing or in a text field) |
 | `Ctrl+N` | Focus the new-task field on Home |
 | `F11` | Fullscreen timer (`Esc` leaves it) |
 | `Esc` | Close the open dialog, or leave fullscreen |
 | `Ctrl+Alt+P` | Start / pause the timer from anywhere in Windows |
 
-Shortcut hints appear as tooltips on the buttons themselves; there is no list of
-keys in the interface. The first-run screen is keyboard-only as well: type a
-name, press Enter.
+The first page is keyboard-only: type a name, press Enter. Shortcut hints live in
+button tooltips, not in a list on screen.
 
 ## Architecture
 
@@ -234,24 +218,33 @@ electron\              main.ts (window, tray, shortcuts, notifications, taskbar)
                        preload.ts (typed, whitelisted bridge)
                        pomodoro.ts (the timer engine, end-timestamp based)
                        storage.ts (atomic writes, backups, migrations)
-src\                   lib\ (schema, reducer, stats, tasks, date, format, name, ipc, store)
-                       views\ (Welcome, Home, Timer, Activity, Settings)
-                       components\ (header, charts, heatmap, dialogs, primitives)
+src\lib                schema, reducer, stats, tasks, date, format, name, ipc, store
+src\views              Welcome, Home, Timer, Activity, Settings
+src\components         NoteEditor, header, charts, heatmap, dialogs, primitives
 src\assets\fonts       the bundled woff2 files
-src\assets\onboarding  the archived photographic plates (no longer bundled)
-build\                 icon.ico + the png sizes electron-builder needs
+src\assets\onboarding  archived photographic plates (not imported by the app)
+build\                 icon.ico + the PNG sizes electron-builder needs
 scripts\               dev, build, asset pipeline, unit tests, the CDP verifier
 tests\                 the assertion suite behind `npm test`
 ```
 
 React 18 + TypeScript + Vite for the renderer, Tailwind for styling, Electron for
-the shell. That is the whole dependency list — no UI kit, no state library, no
-router, no date library.
+the shell, and TipTap for the note editor. No UI kit, no state library, no router,
+no date library, no chart library.
 
 The reducer is imported by both processes, so the optimistic renderer update and
 the authoritative main-process write apply the same pure transformation. The
 renderer is sandboxed: `contextIsolation` on, `nodeIntegration` off, one named
 channel per operation, every message validated in `sanitizeAction`.
+
+### The note editor
+
+TipTap drives one `EditorContent` with a deliberately small schema: paragraph and
+hard break, bold, italic, underline, and a `textStyle` font-size mark with four
+fixed values (13, 15, 18 and 24 px). The toolbar has B / I / U and S / M / L / XL;
+there are no headings, lists, colours, links or images. The HTML is stored as the
+editor emits it. Saves are debounced 400 ms and flushed on blur and unmount, and
+the reducer clamps the payload at 200,000 characters.
 
 ### How the timer survives everything
 
@@ -262,55 +255,12 @@ either resumes the ticker or closes the session — crediting the scheduled leng
 rather than the hours of absence. The ticker only exists while a session runs, so
 idle CPU is zero.
 
-### The Welcome screen
-
-The first page is a letterpress title page, not a cover photograph: cream paper
-pinned to the light palette whatever edition the app opens in, a hairline grid
-fading toward the edges, and a seal whose circular legend turns once a minute.
-It is a full-window layer above the shell,
-not a route: while it is up, the app header and the tab strip are not rendered at
-all. Its own top 48 px is a transparent drag region ending before the caption
-buttons, so the window stays movable and closable.
-
-The question sits in the left column, two-tone and broken across two lines; the
-name is written on a ruled line with a square accent block at its end. The right
-column holds the seal, the edition number and a three-part colophon. Nothing is
-an image: the page is type, hairline rules and one inline SVG, so the first thing
-the app shows costs no network and no decode. Under `prefers-reduced-motion` the
-seal stops, the page leaves without travelling, and only fades remain.
-
-Everything is sized in `clamp()` and percentages, and the heading uses
-`text-wrap: balance` so it stays on two clean lines down to 1000 × 600. The name
-rule is deliberately narrow — 1 to 24 characters of Unicode letters, spaces,
-hyphen, apostrophe and full stop, with whitespace collapsed — because the name is
-printed back at you. Anything else shakes the field once (80 ms) and explains
-itself in a 13 px line underneath. There is no skip button: there is nothing to
-skip past.
-
-### ASCII marks
-
-The ornament is borrowed, not drawn by this project. Three pieces come from the
-[ASCII Art Archive](https://www.asciiart.eu/):
-
-| Mark | Artist | Source |
-|---|---|---|
-| Sun | unknown | [Nature → Sun](https://www.asciiart.eu/nature/sun) |
-| Hourglass | unknown | [Miscellaneous → Hourglass](https://www.asciiart.eu/miscellaneous/hourglass) |
-| Feather and Ink | llizard | [Miscellaneous → Feathers](https://www.asciiart.eu/miscellaneous/feathers) |
-
-They appear only inside the app — the Focus card's day mark, the idle timer
-room, the empty task list and the empty charts. Every mark is `aria-hidden`,
-set in JetBrains Mono, and deterministic; none of them is generated or fetched
-at runtime. Per-file attribution is in [CREDITS.md](CREDITS.md).
-
 ### Windows integration
 
 - Per-user NSIS install (`asInvoker`), no admin rights, choice of directory,
-  desktop + Start Menu shortcuts, and a clean uninstaller that leaves your data
-  alone.
-- `titleBarStyle: 'hidden'` with `titleBarOverlay`, so snap layouts, drag and the
-  standard caption buttons keep working; the 48 px header row is the drag region
-  and its controls are marked `no-drag`.
+  desktop + Start Menu shortcuts, and an uninstaller that leaves data alone.
+- `titleBarStyle: 'hidden'` with `titleBarOverlay`, so snap layouts, dragging and
+  the standard caption buttons keep working; the top 48 px is the drag region.
 - Tray menu (show, start/pause, reset, quit) with a live countdown tooltip.
 - Taskbar: `setProgressBar` while a session runs, `flashFrame` when one ends
   behind another window, and the window title becomes `24:10 · Focus — Daybook`.
@@ -323,170 +273,111 @@ at runtime. Per-file attribution is in [CREDITS.md](CREDITS.md).
 No remote content, no remote code, no analytics, no accounts. The packaged app
 runs under a strict CSP (`default-src 'self'`, no inline scripts, no objects, no
 framing) over a privileged `app://daybook` origin, all permission requests are
-denied, and external links open in the default browser. What you track never
-leaves the machine.
-
-### Performance
-
-Cold start is well under the two-second budget on a mid-range laptop; the
-renderer is throttled while hidden because the timer lives in the main process.
-Charts draw from one memoised pass over the stored days.
+denied, and external links open in the default browser. What you write and track
+never leaves the machine.
 
 ## Testing
 
 ```powershell
 npm run typecheck   # renderer + main process
-npm test            # 292 assertions, no framework: node scripts/test.mjs
-npm run verify      # 141 acceptance checks against the built app
+npm test            # 307 assertions, no framework: node scripts/test.mjs
+npm run verify      # 113 acceptance checks against the built app
 npm run verify -- --exe "release\win-unpacked\Daybook.exe"   # …and the packaged one
-npm run verify -- --shots shots-verify                       # plus a PNG per screen
+npm run verify -- --shots shots-verify --shot-size 1440x900  # plus a PNG per screen
 ```
 
-The verifier drives four processes in turn, each pointed at a scratch data
-directory (`DAYBOOK_DATA_DIR`), because "the screen never comes back" and "the
-file was migrated once" are only true of a fresh start. It never reads or writes
-your own `%APPDATA%\Daybook` — your document is only ever *copied*, and the copy
-is checked field-count for field-count before and after the migration. The
-first-run screen can also be reviewed by hand:
+The verifier drives several processes in turn, each pointed at a scratch data
+directory (`DAYBOOK_DATA_DIR`), because "the screen never comes back" and "the file
+was migrated once" are only true of a fresh start. It never reads or writes your
+own `%APPDATA%\Daybook`; a copy is used for the upgrade check and its history is
+counted before and after. The Welcome screen can also be reviewed by hand:
 
 ```powershell
 $env:DAYBOOK_FORCE_ONBOARDING=1; npm run dev
 ```
 
-The unit suite covers the migration path (including the pre-migration copy), the
-rolling task list and its cap, the statistics (heat levels, range bars, streaks,
-"never a future day"), atomic writes and backup rotation, name validation, and the
-timer's reconciliation, skip-credits and custom mode.
+The acceptance run covers: the minimal Welcome screen at 1000 × 600 and 1440 ×
+900, name validation, the greeting, the shell and page bar; the note editor's
+bold, size and on-disk persistence; the rolling task cap; both timer modes, the
+Space shortcut and manual sessions; the three Activity figures, the 53 × 7
+calendar and the day dialog; Settings clamps, theme and the typed delete
+confirmation; every tab free of page scroll and text below 12 px at 1000 × 600,
+1366 × 768 and 1920 × 1080; a clean renderer console; and a v3 document upgraded
+to v4 with every day, session, movement and task intact.
 
-`scripts/verify.mjs` asserts the release checklist end to end against the real
-UI: fresh install shows the Welcome screen once and not again, Enter and click
-both save a name, empty and invalid input shake with the helper line, the name
-lands in the Home heading and in Settings, four tabs and no second window, the
-48 px header, one primary action per screen, the seven-task cap and its waiting
-line, both timer modes and their auto-logging, the heatmap tooltip and the day
-dialog, both graphs, Settings autosave/clamps/the typed `DELETE`, every tab free of
-scrollbars or clipping at 1000 × 600 through 1920 × 1080 at 100/125/150 %, text at
-≥ 12 px and ≥ 4.5:1 contrast, and a renderer that logged nothing at all. It
-restores whatever it touches and never confirms a destructive dialog.
-
-It raises the window to the front first: Windows reports a fully covered window
-as occluded, Chromium then stops painting it, and anything that waits on a frame
-— a chart measuring itself, a dialog's exit animation, a screenshot — will not
-finish. `--no-raise` reproduces that state on purpose; the two checks that need
-frames fail there, and every geometric check still passes.
+The verifier raises the window first. Windows reports a fully covered window as
+occluded, Chromium then stops painting it, and anything that waits on a frame — a
+chart measuring itself, a dialog's exit animation, a screenshot — will not finish.
+`--no-raise` reproduces that state on purpose.
 
 ## Packaging and the SmartScreen warning
 
-`npm run dist:all` produces both files below, unchanged from the release assets:
+`npm run dist` produces one file:
 
 ```
-release\Daybook-Setup-1.4.0.exe
-release\Daybook-Portable-1.4.0.exe
+release\Daybook-Setup-2.0.0.exe
 ```
 
-They are not code-signed, so the first run shows Windows SmartScreen: click
+It is not code-signed, so the first run shows Windows SmartScreen: click
 **More info → Run anyway**. To remove that warning, sign the build with an
-Authenticode certificate (electron-builder picks up `CSC_LINK` and
+Authenticode certificate (electron-builder reads `CSC_LINK` and
 `CSC_KEY_PASSWORD`, or a `win.signtoolOptions` block).
 
 Auto-update is deliberately absent: an updater with no signed release and no feed
-is a setting that does nothing. Add `electron-updater` back together with a real
-publish target when there is something to update to.
+is a setting that does nothing. Add `electron-updater` back with a real publish
+target when there is something to update to.
 
 ## Changelog
 
+### 2.0.0
+
+- **Home is a note taker.** One document-level note with bold, italic, underline
+  and four text sizes, saved as HTML and restored across restarts. The Start focus
+  action and the movement controls left Home; starting work now lives only on
+  Timer.
+- **A new shell and a new Welcome screen.** A 168 px left rail, a 48 px page bar
+  and rounded paper cards replace the editorial masthead, numbered headings,
+  colophons and explanatory paragraphs. The Welcome screen is a wordmark, one
+  question, one field and an arrow. No photograph, seal, edition line or helper
+  copy.
+- **Activity, simplified.** Today, This week and Streak; one 30-day focus chart;
+  one focus-only year heatmap. No filters, range switch, tag chart or insight line.
+  The day dialog edits sessions and completed tasks only.
+- **Portable removed.** The portable target, its scripts and its docs are gone.
+  `npm run dist` produces the NSIS installer only.
+- **Schema v4.** Adds `notes { html, updatedAt }` with a 200,000-character cap and
+  a v3 → v4 migration. Movement remains in the data but is no longer surfaced.
+- The 1.4.0 source commit was never given a GitHub release; v2.0.0 is the next
+  published release after v1.3.0.
+
 ### 1.4.0
 
-- **A new first page.** The Welcome screen is now a letterpress title page:
-  cream paper, a hairline grid, a slowly turning seal and a ruled name line.
-  The three photographs, the dark scrim and the generated halftone sun are gone;
-  the screen is type, rules and one SVG, and it loads no image at all.
-- **The clock moves.** The timer's digits now roll from one value to the next,
-  the colon breathes once a second while a session runs, and the dial gained a
-  sixty-tick rim, a travelling arc head and a dot that walks the rim once a
-  minute. Paused means still; reduced motion means no travel.
-- **Borrowed ASCII.** The app's ornament is now sourced from the ASCII Art
-  Archive — a sun on the Focus card, an hourglass in the timer room, a quill in
-  the empty task list and the empty charts — with artist credit in CREDITS.md.
-- **A quieter masthead and richer cards.** Home gained an edition line and a
-  boxed streak/score pair; cards gained a hairline highlight, numbered headings
-  and a little more air. The tab indicator now slides between sections.
-- Version 1.4.0 in Settings. No data or schema change.
+- A typographic Welcome screen with a turning seal, a moving timer clock, borrowed
+  ASCII ornament and a quieter masthead. The source commit exists, but no release
+  asset was published for it.
 
 ### 1.3.0
 
-- **A redesigned first-run screen.** The question now sits in a shaded left
-  column over a dusk landscape, with a giant sun engraved in ASCII characters
-  over the sky and three plates that cross-fade slowly behind it. Same one
-  question, same keyboard-only flow, same 300 ms fades.
-- **ASCII marks**, each drawn in the bundled mono face and marked `aria-hidden`:
-  the welcome sun, a small sun on the boot screen, the empty task list's
-  checkbox, and the empty by-tag chart's flat line.
-- **One type system.** Fraunces for display, Geist for every label, sentence,
-  field and heading in the interface, JetBrains Mono only for data — clocks,
-  axis ticks, shortcuts, counters, the ASCII. A new `.meta` caption style
-  replaces the mono labels that had crept into rows.
-- Two CC0 photographs by Linh Pham and Ryan McMahon join the owner's knight. All
-  three ship as WebPs, 476 kB together; the PNG and JPEG sources never do.
-- Version 1.3.0 in Settings. No data or schema change.
+- A dusk photographic Welcome screen, sourced ASCII marks, and one type system.
+  The last release built with the portable target.
 
 ### 1.2.0
 
-- **A first-run screen.** One question, asked once: *What shall we call you,
-  Knight?* — over the bundled photograph, with a single field and an arrow. Enter
-  or click saves the name, the screen says it back, and Home opens under it.
-- The name appears in exactly two places: the Home heading (`Today, Ada`) and an
-  editable **Name** row in Settings → App.
-- New `profile` and `onboarding` keys (schema v3). Owners upgrading from 1.0.0 are
-  greeted once, because their document has no name; nobody is greeted twice.
-- The background ships as a 259 kB WebP generated from the owner's PNG at build
-  time; the PNG itself is never bundled.
-- `DAYBOOK_FORCE_ONBOARDING=1` shows the screen again for review, and
-  `DAYBOOK_DATA_DIR` points the app at a scratch data directory — both are how the
-  acceptance run exercises first launch and upgrade without touching real data.
+- The first-run name question, schema v3 and the `profile` / `onboarding` fields.
 
 ### 1.1.0
 
-- Four tabs. The sidebar, status bar, command palette, footer colophon, `§`
-  numbering, second Settings window and the full-window Press Room are gone —
-  along with their code.
-- Home is three columns with one primary action each and a rolling task list.
-- Timer has Pomodoro **and** Custom modes, tag chips, an inline discard
-  confirmation and fullscreen.
-- Activity merges the old heatmap and two graphs: a GitHub-style five-level
-  calendar with filters, a focus bar chart with a 30D/12W/1Y toggle, and a by-tag
-  breakdown.
-- Settings is a normal tab that saves as you type.
-- The heatmap no longer picks a future day as a "best" day, the tooltip is opaque
-  and clamped, and every duration prints one way: `45m`, `2h 00m`.
+- Four tabs, one primary action per screen, Pomodoro and Custom modes, a merged
+  Activity tab, and the rolling task list.
 
 ### 1.0.0
 
-First release: the newspaper-styled tracker that this one simplified.
-
-## Design decisions worth naming
-
-- **Tasks stayed in their day records.** No copy-forward, no migration churn; the
-  rolling list is a *view* over the stored days.
-- **The list starts at the upgrade.** A v1 back catalogue of open items would have
-  shown "7 open, +66 waiting" on first launch, which is exactly the overwhelm that
-  release removed. They stay in the file, unlisted.
-- **Combined = the average of three goal ratios**, the same formula as the daily
-  score, so Home's percentage and the heatmap's darkest cells agree.
-- **Ochre for charts, vermilion for state.** The accent marks the primary action,
-  progress fills, the heatmap and the active tab; chart bars are ink and the
-  by-tag bars are ochre.
-- **The name is asked for exactly once**, and is the one thing *Erase all data*
-  keeps. Being greeted again by a tool you have used for months would be a bug.
+- First release: the newspaper-styled tracker that this one simplified.
 
 ## Licence
 
 [MIT](LICENSE) © 2026 Hirak Barman (Daybook Press).
 
-The bundled typefaces keep their own licences: Fraunces and Geist under the SIL
-Open Font License 1.1, JetBrains Mono under the SIL Open Font License 1.1.
-
-The archived welcome photographs: the knight is the owner's own image; *Foggy
-mountain* by Linh Pham and *Sunset over the mountain forest* by Ryan McMahon are
-CC0, imported from Unsplash via Wikimedia Commons. They are no longer imported by
-the app. Per-file sources and licence links are in [CREDITS.md](CREDITS.md).
+The bundled typefaces keep their own licences: Geist and JetBrains Mono under the
+SIL Open Font License 1.1. The archived Welcome photographs are no longer imported
+by the app; their sources and licences are in [CREDITS.md](CREDITS.md).

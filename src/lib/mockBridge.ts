@@ -122,7 +122,7 @@ export function createMockBridge(): DaybookBridge {
     data,
     dark: Boolean(darkMq?.matches),
     systemDark: Boolean(darkMq?.matches),
-    version: '1.4.0-preview',
+    version: '2.0.0-preview',
     platform: 'win32',
     isPackaged: false,
     maximized: false,
