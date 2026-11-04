@@ -130,7 +130,7 @@ export interface DaybookBridge {
   openDataFolder(): Promise<{ ok: boolean }>;
   window: {
     minimize(): void;
-    toggleMaximize(): void;
+    toggleMaximize(): Promise<boolean>;
     close(): void;
     isMaximized(): Promise<boolean>;
     setFullScreen(on: boolean): Promise<boolean>;

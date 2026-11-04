@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from 'framer-motion';
 import { IconArrowRight } from '../components/Icons';
+import { LogoMark } from '../components/Logo';
+import { WindowControls } from '../components/WindowControls';
 import { cleanName, nameError } from '../lib/name';
 import { useDispatch } from '../lib/store';
 
@@ -106,8 +108,20 @@ export function WelcomeScreen({ onDone }: { onDone: () => void }) {
       aria-modal="true"
       aria-labelledby="welcome-heading"
     >
-      <div className="flex h-full flex-col">
-        <div className="drag flex h-12 shrink-0 items-center pl-6" style={{ marginRight: '8.75rem' }}>
+      <WindowControls />
+
+      {/* The mark appears four times behind the page: large and soft at the
+          edges, smaller through the middle. It is brand weather, not content. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <LogoMark className="absolute -right-[10%] -top-[18%] h-[38rem] -rotate-12 text-[#001766] opacity-[0.07] blur-[22px]" />
+        <LogoMark className="absolute -left-[16%] top-[28%] h-[30rem] -rotate-[18deg] text-[#001766] opacity-[0.055] blur-[16px]" />
+        <LogoMark className="absolute -bottom-[24%] right-[22%] h-[26rem] rotate-[15deg] text-[#001766] opacity-[0.05] blur-[12px]" />
+        <LogoMark className="absolute left-[44%] top-[6%] h-[12rem] rotate-[8deg] text-[#001766] opacity-[0.045] blur-[7px]" />
+      </div>
+
+      <div className="relative z-10 flex h-full flex-col">
+        <div className="drag flex h-12 shrink-0 items-center gap-2.5 pl-6" style={{ marginRight: '8.75rem' }}>
+          <LogoMark className="h-6 text-[#001766]" />
           <span className="font-display text-word font-semibold tracking-[-0.02em] text-ink">
             Daybook<span className="text-accent">.</span>
           </span>

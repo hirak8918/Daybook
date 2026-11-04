@@ -398,6 +398,8 @@ try {
     const input = layer.querySelector('input[aria-label="Your name"]');
     const button = layer.querySelector('button[aria-label="Continue"]');
     const strip = layer.querySelector('.drag');
+    const controls = [...layer.querySelectorAll('[data-window-controls] button')];
+    const marks = [...layer.querySelectorAll('[data-logo]')];
     const box = (el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), right: Math.round(r.right), bottom: Math.round(r.bottom) }; };
     const style = (el) => getComputedStyle(el);
     const hs = heading ? style(heading) : null;
@@ -419,6 +421,11 @@ try {
       buttonBox: button ? box(button) : null,
       images: layer.querySelectorAll('img').length,
       seal: layer.querySelectorAll('.welcome-seal').length,
+      marks: marks.length,
+      blurred: marks.filter((el) => getComputedStyle(el).filter.includes('blur')).length,
+      controls: controls.map((el) => el.getAttribute('aria-label')),
+      controlBox: controls[0] ? box(controls[0].parentElement) : null,
+      controlHeight: controls[0] ? Math.round(controls[0].getBoundingClientRect().height) : 0,
       header: Boolean(document.querySelector('header')),
       aside: Boolean(document.querySelector('aside')),
       strip: strip ? { h: Math.round(strip.getBoundingClientRect().height), right: Math.round(strip.getBoundingClientRect().right) } : null,
@@ -440,9 +447,21 @@ try {
   check('no shell chrome is rendered behind it', welcome.present && !welcome.header && !welcome.aside, welcome);
   check('the page asks one question', welcome.heading === 'What should we call you?', welcome.heading);
   check(
-    'the question is Geist, 34–58px, semibold',
-    /Geist/.test(welcome.headingFont) && welcome.headingWeight === '600' && welcome.headingSize >= 34 && welcome.headingSize <= 58,
+    'the question is Fraunces, 34–58px, semibold',
+    /Fraunces/.test(welcome.headingFont) && welcome.headingWeight === '600' && welcome.headingSize >= 34 && welcome.headingSize <= 58,
     { font: welcome.headingFont, weight: welcome.headingWeight, size: welcome.headingSize },
+  );
+  check('the mark is present and blurred in four places', welcome.marks >= 4 && welcome.blurred >= 4, {
+    marks: welcome.marks,
+    blurred: welcome.blurred,
+  });
+  check(
+    'custom caption buttons fit inside the window',
+    welcome.controls.join(',') === 'Minimize,Maximize,Close' &&
+      welcome.controlHeight === 48 &&
+      welcome.controlBox?.right === 1440 &&
+      welcome.controlBox?.x > 1440 - 150,
+    { controls: welcome.controls, box: welcome.controlBox, height: welcome.controlHeight },
   );
   check('the field is labelled and deliberately empty', welcome.inputLabel === 'Your name' && welcome.inputPlaceholder === 'Your name', {
     label: welcome.inputLabel,
@@ -576,14 +595,20 @@ try {
 
   const home = await page(`(() => {
     const notes = document.querySelector('.note-prose');
-    const tools = [...document.querySelectorAll('button[aria-label^="Text size"]')].map((b) => b.getAttribute('aria-label'));
+    const size = document.querySelector('select[aria-label="Text size"]');
+    const tools = size ? [...size.options].map((option) => option.textContent.trim()) : [];
+    const families = [...document.querySelectorAll('main h1, main h2, main p, main span, main button, main input, main select, main label')]
+      .filter((el) => el.textContent.trim() && el.getBoundingClientRect().width > 0)
+      .map((el) => getComputedStyle(el).fontFamily);
     return {
       notes: Boolean(notes),
+      noteFont: notes ? getComputedStyle(notes).fontFamily : '',
       placeholder: notes?.querySelector('p')?.className ?? '',
       bold: Boolean(document.querySelector('button[aria-label="Bold"]')),
       italic: Boolean(document.querySelector('button[aria-label="Italic"]')),
       underline: Boolean(document.querySelector('button[aria-label="Underline"]')),
       sizes: tools,
+      otherFonts: [...new Set(families.filter((font) => !/Fraunces/.test(font)))],
       taskInput: Boolean(document.querySelector('input[aria-label="Add a task"]')),
       primary: document.querySelectorAll('main button.btn-primary').length,
       focus: document.querySelector('section[aria-labelledby="home-focus"] p.tab')?.textContent.trim() ?? null,
@@ -593,7 +618,15 @@ try {
   })()`);
   check('Home leads with a notes editor', home.notes === true, home);
   check('the editor has bold, italic and underline', home.bold && home.italic && home.underline, home);
-  check('the editor has four text sizes', home.sizes.join(',') === 'Text size S,Text size M,Text size L,Text size XL', home.sizes);
+  check(
+    'the editor offers Word-style numeric text sizes',
+    home.sizes.join(',') === 'Size,12,14,16,18,20,24,28,32,36,48',
+    home.sizes,
+  );
+  check('every UI label is Fraunces', /Fraunces/.test(home.noteFont) && home.otherFonts.length === 0, {
+    note: home.noteFont,
+    other: home.otherFonts,
+  });
   check('the task input is on Home', home.taskInput === true);
   check('Home has no Start focus action and no movement', home.primary === 0 && home.movement === false, home);
   check('the focus figure uses the one duration format', /^(\d+h \d{2}m|\d+m)$/.test(home.focus ?? ''), home.focus);
@@ -620,14 +653,17 @@ try {
   const note = await page(`(async () => {
     document.querySelector('button[aria-label="Bold"]').click();
     await new Promise((r) => setTimeout(r, 120));
-    document.querySelector('button[aria-label="Text size L"]').click();
+    const select = document.querySelector('select[aria-label="Text size"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+    setter.call(select, '20');
+    select.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 900));
     return { html: document.querySelector('.note-prose').innerHTML, text: document.querySelector('.note-prose').innerText.trim() };
   })()`);
-  check('bold and a larger size are applied', /<strong>/.test(note.html) && /font-size:\s*18px/.test(note.html), note.html);
+  check('bold and 20px are applied', /<strong>/.test(note.html) && /font-size:\s*20px/.test(note.html), note.html);
   await sleep(700);
   const savedNote = readData(freshDir)?.notes?.html ?? '';
-  check('the note is saved to the document', /A note for today/.test(savedNote) && /<strong>/.test(savedNote) && /font-size:\s*18px/.test(savedNote), savedNote);
+  check('the note is saved to the document', /A note for today/.test(savedNote) && /<strong>/.test(savedNote) && /font-size:\s*20px/.test(savedNote), savedNote);
 
   // Tasks: add, complete, then fill the list to its cap at the minimum window.
   const task = await page(`(async () => {

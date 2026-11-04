@@ -4,7 +4,6 @@ import { formatMinutes, formatMinutesShort } from '../lib/date';
 import { focusBars, type Bar, type RangeId } from '../lib/stats';
 import type { DaybookData } from '../lib/schema';
 import { useElementSize } from '../hooks/useElementSize';
-import { AsciiMark, SUN } from './AsciiArt';
 
 const PAD = { top: 20, right: 12, bottom: 24, left: 48 };
 
@@ -53,7 +52,6 @@ export function FocusChart({ data, range }: { data: DaybookData; range: RangeId 
   if (total === 0) {
     return (
       <div ref={ref} className="relative flex h-full min-h-0 w-full flex-col items-center justify-center gap-3">
-        <AsciiMark art={SUN} className="text-[10px] text-ink-faint" />
         <p className="font-text text-small text-ink-mute">No focus time yet.</p>
       </div>
     );
@@ -81,7 +79,7 @@ export function FocusChart({ data, range }: { data: DaybookData; range: RangeId 
                 y={y(value) + 4}
                 textAnchor="end"
                 fill="rgb(var(--ink-mute))"
-                style={{ font: '500 12px "JetBrains Mono", monospace' }}
+                style={{ font: '500 12px Fraunces, Georgia, serif' }}
               >
                 {formatMinutesShort(value)}
               </text>
@@ -135,7 +133,7 @@ export function FocusChart({ data, range }: { data: DaybookData; range: RangeId 
                   y={size.h - 8}
                   textAnchor="middle"
                   fill="rgb(var(--ink-mute))"
-                  style={{ font: '500 12px "JetBrains Mono", monospace' }}
+                  style={{ font: '500 12px Fraunces, Georgia, serif' }}
                 >
                   {bar.label}
                 </text>

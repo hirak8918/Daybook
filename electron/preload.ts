@@ -39,7 +39,7 @@ const api: DaybookBridge = {
 
   window: {
     minimize: () => void ipcRenderer.invoke(CH.winMinimize),
-    toggleMaximize: () => void ipcRenderer.invoke(CH.winToggleMaximize),
+    toggleMaximize: () => ipcRenderer.invoke(CH.winToggleMaximize) as Promise<boolean>,
     close: () => void ipcRenderer.invoke(CH.winClose),
     isMaximized: () => ipcRenderer.invoke(CH.winIsMaximized) as Promise<boolean>,
     setFullScreen: (on: boolean) => ipcRenderer.invoke(CH.winSetFullScreen, on) as Promise<boolean>,

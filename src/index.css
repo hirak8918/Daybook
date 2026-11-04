@@ -419,7 +419,7 @@
   .note-editor .note-prose {
     min-height: 100%;
     outline: none;
-    font-family: Geist, Verdana, Tahoma, sans-serif;
+    font-family: Fraunces, Georgia, 'Times New Roman', serif;
     font-size: 0.9375rem;
     line-height: 1.7;
     color: rgb(var(--ink));
@@ -449,6 +449,21 @@
   .note-prose ::selection {
     background: rgb(var(--accent) / 0.22);
     color: rgb(var(--ink));
+  }
+
+  /* The brand mark is a mask so it can inherit any text colour and be blurred
+     or layered without a second asset. */
+  .logo-mark {
+    aspect-ratio: 980 / 1385;
+    background-color: currentColor;
+    -webkit-mask-image: var(--logo-mask);
+    mask-image: var(--logo-mask);
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    mask-size: contain;
   }
 }
 

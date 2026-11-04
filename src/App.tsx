@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { DaybookStore, StoreContext, useBoot, useDark, useSelect, useStoreApi } from './lib/store';
 import { AppSidebar, PageBar, type TabId } from './components/AppHeader';
+import { LogoMark } from './components/Logo';
+import { WindowControls } from './components/WindowControls';
 import { WelcomeScreen } from './views/WelcomeScreen';
 import { NoticeStack, type Notice } from './components/Overlays';
 import { DayDialog } from './components/DayDialog';
@@ -205,7 +207,8 @@ function Shell() {
 
   if (bootError) {
     return (
-      <div className="grid h-full place-items-center bg-paper px-8">
+      <div className="relative grid h-full place-items-center bg-paper px-8">
+        <WindowControls />
         <div className="w-full max-w-[34rem] rounded-card border border-rule bg-paper-raise p-6 shadow-soft">
           <h1 className="font-display text-head text-ink">Daybook could not open its data file.</h1>
           <p className="mt-2 font-text text-body text-ink-soft">{bootError}</p>
@@ -217,7 +220,14 @@ function Shell() {
     );
   }
 
-  if (!ready) return <BootScreen />;
+  if (!ready) {
+    return (
+      <div className="relative h-full">
+        <BootScreen />
+        <WindowControls />
+      </div>
+    );
+  }
 
   // The Welcome screen owns the whole window until it has a name: no rail, no
   // page bar, and none of the shortcuts above.
@@ -238,7 +248,8 @@ function Shell() {
     );
 
   return (
-    <div className="flex h-full overflow-hidden bg-paper">
+    <div className="relative flex h-full overflow-hidden bg-paper">
+      {fullscreen ? null : <WindowControls />}
       {fullscreen ? null : <AppSidebar tab={tab} onTab={setTab} />}
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -269,6 +280,7 @@ function BootScreen() {
   return (
     <div className="grid h-full place-items-center bg-paper">
       <div className="w-[min(24rem,80vw)] text-center">
+        <LogoMark className="mx-auto mb-4 h-10 text-[#001766]" />
         <motion.h1
           className="font-display text-head font-semibold tracking-[-0.03em] text-ink"
           initial={reduced ? false : { opacity: 0, y: 8 }}
