@@ -1,17 +1,19 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import TextStyle from '@tiptap/extension-text-style';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useData, useStoreApi } from '../lib/store';
+import type { Note } from '../lib/schema';
+import { NOTE_TITLE_MAX } from '../lib/schema';
+import { IconArrowRight, IconTrash } from './Icons';
+import { ConfirmDialog } from './Overlays';
 
 /**
  * Font size as a real text-style attribute. Mark attributes must be declared by
  * an extension or ProseMirror drops them, so this adds one global attribute to
- * the TextStyle mark and renders it as an inline size. Sizes are the familiar
- * Word-style steps, chosen from one compact menu.
+ * the TextStyle mark and renders it as an inline size.
  */
 const FontSize = Extension.create({
   name: 'fontSize',
@@ -34,19 +36,43 @@ const FontSize = Extension.create({
 
 const SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 48] as const;
 
+type SaveState = 'saved' | 'dirty';
+
 /**
- * The Home note sheet. One document-level note, saved as the editor emits it:
- * the editor's schema only knows paragraphs, hard breaks, bold, italic,
- * underline and the size mark, so pasted markup cannot smuggle anything else
- * into the file. Saves are debounced and flushed on blur and unmount.
+ * One note. The title and body both save, explicitly with the Save button and
+ * quietly in the background after a pause so closing the app never loses a
+ * sentence. The editor's schema only knows paragraphs, hard breaks, bold,
+ * italic, underline and the size mark.
  */
-export function NoteEditor() {
-  const data = useData();
-  const store = useStoreApi();
-  const initial = useRef(data.notes?.html ?? '');
-  const saved = useRef(initial.current);
+export function NoteEditor({
+  note,
+  onBack,
+  onSave,
+  onDelete,
+}: {
+  note: Note;
+  onBack: () => void;
+  onSave: (patch: { title: string; html: string }) => void;
+  onDelete: () => void;
+}) {
+  const [title, setTitle] = useState(note.title);
+  const [status, setStatus] = useState<SaveState>('saved');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const pending = useRef<number | null>(null);
+  const savedTitle = useRef(note.title);
+  const savedHtml = useRef(note.html);
+  const html = useRef(note.html);
+  const titleRef = useRef(note.title);
+  const saveRef = useRef(onSave);
   const [, forceUpdate] = useReducer((n: number) => n + 1, 0);
+
+  useEffect(() => {
+    titleRef.current = title;
+  }, [title]);
+
+  useEffect(() => {
+    saveRef.current = onSave;
+  }, [onSave]);
 
   const editor = useEditor({
     extensions: [
@@ -68,21 +94,53 @@ export function NoteEditor() {
       FontSize,
       Placeholder.configure({ placeholder: 'Start writing…' }),
     ],
-    content: initial.current,
+    content: note.html,
     editorProps: {
       attributes: {
         class: 'note-prose',
-        'aria-label': 'Notes',
+        'aria-label': 'Note body',
         spellcheck: 'true',
       },
     },
     onUpdate: ({ editor: current }) => {
-      schedule(current.isEmpty ? '' : current.getHTML());
+      html.current = current.isEmpty ? '' : current.getHTML();
+      setStatus('dirty');
+      schedule();
     },
     onBlur: ({ editor: current }) => {
-      flush(current.isEmpty ? '' : current.getHTML());
+      html.current = current.isEmpty ? '' : current.getHTML();
+      commit();
     },
   });
+
+  const commit = useCallback(() => {
+    if (pending.current !== null) {
+      window.clearTimeout(pending.current);
+      pending.current = null;
+    }
+    const cleanTitle = titleRef.current.trim().slice(0, NOTE_TITLE_MAX) || 'Untitled note';
+    if (cleanTitle === savedTitle.current && html.current === savedHtml.current) {
+      setStatus('saved');
+      return;
+    }
+    savedTitle.current = cleanTitle;
+    savedHtml.current = html.current;
+    saveRef.current({ title: cleanTitle, html: html.current });
+    setStatus('saved');
+  }, []);
+
+  const commitRef = useRef(commit);
+  useEffect(() => {
+    commitRef.current = commit;
+  }, [commit]);
+
+  function schedule() {
+    if (pending.current !== null) window.clearTimeout(pending.current);
+    pending.current = window.setTimeout(() => {
+      pending.current = null;
+      commitRef.current();
+    }, 650);
+  }
 
   useEffect(() => {
     if (!editor) return;
@@ -94,31 +152,11 @@ export function NoteEditor() {
   }, [editor]);
 
   useEffect(() => {
-    if (!editor) return;
     return () => {
       if (pending.current !== null) window.clearTimeout(pending.current);
-      const html = editor.isEmpty ? '' : editor.getHTML();
-      if (html !== saved.current) store.dispatch({ type: 'note/set', html });
+      commitRef.current();
     };
-  }, [editor, store]);
-
-  function schedule(html: string) {
-    if (pending.current !== null) window.clearTimeout(pending.current);
-    pending.current = window.setTimeout(() => {
-      pending.current = null;
-      flush(html);
-    }, 400);
-  }
-
-  function flush(html: string) {
-    if (pending.current !== null) {
-      window.clearTimeout(pending.current);
-      pending.current = null;
-    }
-    if (html === saved.current) return;
-    saved.current = html;
-    store.dispatch({ type: 'note/set', html });
-  }
+  }, []);
 
   if (!editor) {
     return <div className="min-h-0 flex-1" aria-hidden="true" />;
@@ -126,8 +164,60 @@ export function NoteEditor() {
 
   const activeSize = editor.getAttributes('textStyle').fontSize as string | undefined;
 
+  const back = () => {
+    commit();
+    onBack();
+  };
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col" aria-label="Notes">
+    <div className="flex min-h-0 flex-1 flex-col" aria-label="Note editor">
+      <div className="flex shrink-0 items-center gap-2 border-b border-rule px-3 py-2">
+        <button
+          type="button"
+          className="btn-text no-rule -ml-1 shrink-0 px-1.5"
+          aria-label="All notes"
+          title="All notes"
+          onClick={back}
+        >
+          <IconArrowRight size={15} className="rotate-180" />
+        </button>
+        <input
+          className="h-9 min-w-0 flex-1 border-0 bg-transparent px-1 font-display text-[1.05rem] font-semibold tracking-[-0.02em] text-ink outline-none placeholder:text-ink-mute"
+          value={title}
+          aria-label="Note title"
+          maxLength={NOTE_TITLE_MAX}
+          placeholder="Untitled note"
+          onChange={(event) => {
+            setTitle(event.target.value);
+            setStatus('dirty');
+          }}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              commit();
+              event.currentTarget.blur();
+            }
+          }}
+        />
+
+        <span className="hidden shrink-0 font-text text-micro text-ink-mute sm:block" aria-live="polite">
+          {status === 'saved' ? 'Saved' : 'Unsaved'}
+        </span>
+        <button type="button" className="btn btn-primary h-8 min-h-0 shrink-0 px-3" onClick={commit} aria-label="Save note">
+          Save
+        </button>
+        <button
+          type="button"
+          className="btn-text no-rule -mr-1 shrink-0 px-1"
+          aria-label="Delete note"
+          title="Delete note"
+          onClick={() => setConfirmDelete(true)}
+        >
+          <IconTrash size={15} />
+        </button>
+      </div>
+
       <div className="flex shrink-0 items-center gap-1 border-b border-rule px-3 py-2">
         <FormatButton
           label="Bold"
@@ -183,6 +273,18 @@ export function NoteEditor() {
       <div className="note-editor min-h-0 flex-1 overflow-y-auto px-6 py-5">
         <EditorContent editor={editor} />
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete this note?"
+        body={<p>“{title.trim() || 'Untitled note'}” will be removed. There is no undo in the app.</p>}
+        confirmLabel="Delete note"
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => {
+          setConfirmDelete(false);
+          onDelete();
+        }}
+      />
     </div>
   );
 }

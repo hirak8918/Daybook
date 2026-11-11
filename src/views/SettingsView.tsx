@@ -70,6 +70,19 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
     onNotice({ tone: 'good', title: 'Imported', body: result.path });
   };
 
+  const chooseDataFolder = async () => {
+    const result = await store.bridge.chooseDataFolder();
+    if (result.ok) {
+      onNotice({
+        tone: 'good',
+        title: 'Data folder changed',
+        body: 'Daybook is restarting in the selected folder.',
+      });
+    } else if (!result.canceled) {
+      onNotice({ tone: 'warn', title: 'Could not change the data folder', body: result.error });
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 p-4">
       <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-3">
@@ -269,6 +282,14 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
                 <IconFolder size={15} /> Open folder
               </button>
             </div>
+            <div className="flex min-w-0 items-center gap-2 border-t border-rule pt-2">
+              <span className="min-w-0 flex-1 truncate font-text text-micro text-ink-mute" title={boot?.dataDir}>
+                {boot?.dataDir ?? 'Loading folder…'}
+              </span>
+              <button className="btn-text shrink-0" onClick={() => void chooseDataFolder()}>
+                Change folder
+              </button>
+            </div>
             <div className="mt-auto">
               <button className="btn border-accent text-accent-deep" onClick={() => setEraseOpen(true)}>
                 <IconTrash size={15} /> Erase all data
@@ -280,7 +301,7 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
 
       <footer className="flex shrink-0 items-center justify-end">
         <p className="font-text text-micro text-ink-mute">
-          Daybook <span className="font-mono">{boot?.version ?? '2.1.0'}</span>
+          Daybook <span className="font-mono">{boot?.version ?? '2.2.0'}</span>
         </p>
       </footer>
 

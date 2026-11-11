@@ -44,7 +44,7 @@ import { generateSeedDays } from '../src/lib/seed';
 import { addDays, addMonths, formatMinutes, formatMinutesShort, startOfWeek, toKey } from '../src/lib/date';
 import { count, noun } from '../src/lib/format';
 import { NAME_MAX, cleanName, nameError } from '../src/lib/name';
-import { MAX_OPEN_TASKS, listIsFull, openTasks, tasksCompletedOn, visibleTasks } from '../src/lib/tasks';
+import { MAX_OPEN_TASKS, listIsFull, openTasks, taskBuckets, tasksCompletedOn, visibleTasks } from '../src/lib/tasks';
 
 /* ------------------------------------------------------------------ *
  * Micro test harness
@@ -126,10 +126,9 @@ describe('Schema and migrations');
 {
   const fresh = defaultData(new Date('2026-01-01T08:00:00Z'));
   eq('default document carries the current version', fresh.version, DATA_VERSION);
-  eq('the schema is version 4', DATA_VERSION, 4);
+  eq('the schema is version 5', DATA_VERSION, 5);
   check('a fresh document has no days', Object.keys(fresh.days).length === 0);
-  eq('a fresh document has an empty note sheet', fresh.notes.html, '');
-  check('the empty note still carries a timestamp', typeof fresh.notes.updatedAt === 'string');
+  eq('a fresh document has an empty note library', fresh.notes.length, 0);
   eq('a fresh document has no task-list anchor', fresh.meta.tasksStartAt, null);
   eq('a fresh document has no name yet', fresh.profile, undefined);
   eq('and says the greeting is still owed', fresh.onboarding?.completed, false);
@@ -186,10 +185,10 @@ describe('Schema and migrations');
       },
     },
     timer: { mode: 'focus', running: false, endsAt: null, remainingMs: 600_000, round: 2, tag: 'Studio', startedAt: null, completed: 7 },
-    meta: { launches: 9, lastOpenedAt: '2026-02-02T09:00:00Z', seeded: true },
+    meta: { launches: 9, lastOpenedAt: '2026-02-02T09:00:00Z', seeded: false },
   };
   const upgraded = migrate(structuredClone(v1));
-  eq('v1 upgrades to v4', upgraded.version, 4);
+  eq('v1 upgrades to v5', upgraded.version, 5);
   // The Welcome screen is the one thing an upgrade does not invent: a document
   // with no name is exactly what asks the question, once.
   eq('an upgrade is not given a name', upgraded.profile, undefined);
@@ -207,18 +206,47 @@ describe('Schema and migrations');
   eq('session minutes kept', upgraded.days['2026-02-01'].sessions[0].minutes, 90);
   eq('movement kept', upgraded.days['2026-02-01'].movements[0].minutes, 40);
   eq('the daily note is kept, unused but not deleted', upgraded.days['2026-02-01'].note, 'A quiet Sunday');
-  eq('a v1 document gains an empty Home note', upgraded.notes.html, '');
+  eq('a v1 document gains an empty note library', upgraded.notes.length, 0);
   eq('no task was deleted', upgraded.days['2026-02-01'].tasks.length, 2);
 
-  // The Home note is a document-level field and survives a re-read verbatim.
+  // A v4 note sheet becomes the first note in the v5 library.
   const noted = migrate({
     ...structuredClone(v1),
     notes: { html: '<p><strong>Read</strong> the proofs.</p>', updatedAt: '2026-04-01T12:00:00.000Z' },
   });
-  eq('a stored note is kept', noted.notes.html, '<p><strong>Read</strong> the proofs.</p>');
-  eq('with the moment it was edited', noted.notes.updatedAt, '2026-04-01T12:00:00.000Z');
+  eq('a stored note becomes a titled card', noted.notes[0].title, 'First note');
+  eq('a stored note body is kept', noted.notes[0].html, '<p><strong>Read</strong> the proofs.</p>');
+  eq('with the moment it was edited', noted.notes[0].updatedAt, '2026-04-01T12:00:00.000Z');
   const hugeNote = migrate({ ...structuredClone(v1), notes: { html: 'x'.repeat(NOTE_HTML_MAX + 500) } });
-  eq('an oversized note is clamped on read', hugeNote.notes.html.length, NOTE_HTML_MAX);
+  eq('an oversized note is clamped on read', hugeNote.notes[0].html.length, NOTE_HTML_MAX);
+
+  // A seeded v4 document is cleaned on upgrade, but a user row beside it stays.
+  const seededDoc = {
+    version: 4,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    settings: {},
+    days: {
+      '2026-01-02': {
+        date: '2026-01-02',
+        note: 'Demo note',
+        sessions: [{ id: 'seed_s', tag: 'Demo', startedAt: '2026-01-02T09:00:00Z', minutes: 30 }],
+        movements: [{ id: 'seed_m', type: 'walk', minutes: 20, intensity: 2, at: '2026-01-02T07:00:00Z' }],
+        tasks: [
+          { id: 'seed_t', title: 'Demo task', priority: 'B', done: false, createdAt: '2026-01-02T08:00:00Z', order: 0 },
+          { id: 'mine_t', title: 'My task', priority: 'B', done: false, createdAt: '2026-01-02T10:00:00Z', order: 1 },
+        ],
+      },
+    },
+    timer: {},
+    meta: { seeded: true },
+  };
+  const cleaned = migrate(seededDoc);
+  eq('the demo day is gone except for the user task', Object.keys(cleaned.days).length, 1);
+  eq('the demo task is removed', cleaned.days['2026-01-02'].tasks.length, 1);
+  eq('the user task is kept', cleaned.days['2026-01-02'].tasks[0].title, 'My task');
+  eq('the demo session is removed', cleaned.days['2026-01-02'].sessions.length, 0);
+  eq('the demo note is removed', cleaned.days['2026-01-02'].note, '');
+  eq('the seeded flag is cleared', cleaned.meta.seeded, false);
 
   // A name, once saved, survives every later read of the file.
   const named = migrate({
@@ -290,25 +318,30 @@ describe('The rolling task list');
   let many: DaybookData = { ...anchored, meta: { ...anchored.meta, tasksStartAt: null } };
   for (let i = 0; i < 6; i++) many = applyAction(many, { type: 'task/add', date: today, title: `Task ${i}` });
   eq('nine open tasks in total', openTasks(many).length, 9);
-  eq('only seven are shown', visibleTasks(many).shown.length, MAX_OPEN_TASKS);
-  eq('the rest are counted as waiting', visibleTasks(many).waiting, 2);
-  eq('the list reports itself full', listIsFull(many), true);
+  eq('all open tasks are shown', visibleTasks(many).shown.length, 9);
+  eq('nothing is hidden behind a short cap', visibleTasks(many).waiting, 0);
+  eq('the list is not full at nine', listIsFull(many), false);
+
+  const buckets = taskBuckets(many, today);
+  eq('today’s tasks are grouped separately', buckets.today.length, 8);
+  eq('the old task is carried into the remaining group', buckets.carried.length, 1);
+  eq('the carried task keeps its original day', buckets.carried[0].origin, old);
 
   // Completing the oldest still leaves the list over the cap; finishing enough
   // of them brings it back under.
   const oldest = openTasks(many).find((t) => t.title === 'Stale item')!;
   const afterDone = applyAction(many, { type: 'task/toggle', date: oldest.date, id: oldest.id });
   eq('the finished task leaves the list', openTasks(afterDone).length, 8);
-  eq('the waiting count follows', visibleTasks(afterDone).waiting, 1);
-  eq('eight open is still over the cap', listIsFull(afterDone), true);
+  eq('no open task is hidden by the old cap', visibleTasks(afterDone).waiting, 0);
+  eq('eight open is still an ordinary list', listIsFull(afterDone), false);
   eq('an old task finished today counts today', tasksCompletedOn(afterDone, today), 1);
   eq('and not on the day it was written', tasksCompletedOn(afterDone, old), 0);
   let shrinking = afterDone;
   for (const task of openTasks(shrinking).slice(0, 2)) {
     shrinking = applyAction(shrinking, { type: 'task/toggle', date: task.date, id: task.id });
   }
-  eq('finishing enough brings the list back under the cap', openTasks(shrinking).length, 6);
-  eq('and the input is usable again', listIsFull(shrinking), false);
+  eq('finishing tasks reduces the list', openTasks(shrinking).length, 6);
+  eq('and the input stays usable', listIsFull(shrinking), false);
 
   // Reopening puts it back, with no completion stamp.
   const reopened = applyAction(afterDone, { type: 'task/toggle', date: oldest.date, id: oldest.id });
@@ -385,18 +418,25 @@ describe('Reducer');
 
   /* ------------------------------------------------------------- notes */
 
-  eq('a document starts with an empty note', data.notes.html, '');
-  const withNote = applyAction(data, {
+  eq('a document starts with no notes', data.notes.length, 0);
+  const addedNote = applyAction(data, { type: 'note/add', id: 'note_a', title: 'Ship', html: '' });
+  eq('a note can be created with a title', addedNote.notes[0].title, 'Ship');
+  const withNote = applyAction(addedNote, {
     type: 'note/set',
+    id: 'note_a',
     html: '<p><strong>Ship</strong> the <em>redesign</em>.</p>',
   });
-  eq('the note is stored', withNote.notes.html, '<p><strong>Ship</strong> the <em>redesign</em>.</p>');
-  check('the note is stamped when it changes', withNote.notes.updatedAt !== data.notes.updatedAt);
+  eq('the note is stored', withNote.notes[0].html, '<p><strong>Ship</strong> the <em>redesign</em>.</p>');
+  check('the note is stamped when it changes', withNote.notes[0].updatedAt !== addedNote.notes[0].updatedAt);
+  const renamedNote = applyAction(withNote, { type: 'note/rename', id: 'note_a', title: 'Launch' });
+  eq('a note can be renamed', renamedNote.notes[0].title, 'Launch');
+  const updatedNote = applyAction(renamedNote, { type: 'note/update', id: 'note_a', patch: { title: 'Launch day', html: '<p>Ready.</p>' } });
+  eq('title and body save together', `${updatedNote.notes[0].title}:${updatedNote.notes[0].html}`, 'Launch day:<p>Ready.</p>');
   eq('the note stays out of the day records', withNote.days[today]?.note ?? '', '');
-  const hugeNote = applyAction(data, { type: 'note/set', html: 'x'.repeat(NOTE_HTML_MAX + 10) });
-  eq('the note is clamped at the boundary', hugeNote.notes.html.length, NOTE_HTML_MAX);
+  const hugeNote = applyAction(addedNote, { type: 'note/set', id: 'note_a', html: 'x'.repeat(NOTE_HTML_MAX + 10) });
+  eq('the note is clamped at the boundary', hugeNote.notes[0].html.length, NOTE_HTML_MAX);
   const erasedNote = applyAction(withNote, { type: 'data/reset', seed: false });
-  eq('erasing data clears the note', erasedNote.notes.html, '');
+  eq('erasing data clears the note library', erasedNote.notes.length, 0);
 
   const reseeded = applyAction(data, { type: 'data/reset', seed: true });
   check('reset with seed produces a back catalogue', Object.keys(reseeded.days).length > 50);
@@ -452,10 +492,10 @@ describe('Action validation at the IPC boundary');
   eq('removed reorder action rejected', sanitizeAction({ type: 'task/reorder', date: today, ids: [] }), null);
   eq('a legacy day-note action is still rejected', sanitizeAction({ type: 'note/set', date: today, note: 'x' }), null);
   eq('removed day-clear action rejected', sanitizeAction({ type: 'day/clear', date: today }), null);
-  const noteAction = sanitizeAction({ type: 'note/set', html: '<p>Hello</p>' }) as { html: string };
+  const noteAction = sanitizeAction({ type: 'note/set', id: 'note_a', html: '<p>Hello</p>' }) as { html: string };
   eq('the Home note action passes validation', noteAction.html, '<p>Hello</p>');
-  eq('a non-string note body is rejected', sanitizeAction({ type: 'note/set', html: 42 }), null);
-  const longNote = sanitizeAction({ type: 'note/set', html: 'x'.repeat(NOTE_HTML_MAX + 10) }) as { html: string };
+  eq('a non-string note body is rejected', sanitizeAction({ type: 'note/set', id: 'note_a', html: 42 }), null);
+  const longNote = sanitizeAction({ type: 'note/set', id: 'note_a', html: 'x'.repeat(NOTE_HTML_MAX + 10) }) as { html: string };
   eq('a note from the renderer is clamped', longNote.html.length, NOTE_HTML_MAX);
 
   const long = sanitizeAction({ type: 'task/add', date: today, title: 'x'.repeat(900) }) as { title: string };
@@ -814,7 +854,7 @@ describe('Storage');
       days: { '2026-02-01': { date: '2026-02-01', note: 'kept', sessions: [{ id: 'x', tag: 'Studio', startedAt: '2026-02-01T09:00:00Z', minutes: 90 }], movements: [], tasks: [] } },
       settings: { goals: { deepWorkMin: 300 }, tickSound: true },
       timer: { mode: 'focus', running: false, remainingMs: 0, round: 0, completed: 0 },
-      meta: { launches: 3, lastOpenedAt: '2026-02-02T09:00:00Z', seeded: true },
+      meta: { launches: 3, lastOpenedAt: '2026-02-02T09:00:00Z', seeded: false },
     },
     null,
     2,

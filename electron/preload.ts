@@ -36,6 +36,7 @@ const api: DaybookBridge = {
   exportData: () => ipcRenderer.invoke(CH.export) as Promise<StorageResult>,
   importData: () => ipcRenderer.invoke(CH.import) as Promise<ImportResult>,
   openDataFolder: () => ipcRenderer.invoke(CH.openDataFolder) as Promise<{ ok: boolean }>,
+  chooseDataFolder: () => ipcRenderer.invoke(CH.chooseDataFolder) as Promise<StorageResult>,
 
   window: {
     minimize: () => void ipcRenderer.invoke(CH.winMinimize),

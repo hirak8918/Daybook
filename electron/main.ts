@@ -159,6 +159,30 @@ function refreshTrayIcon(): void {
 
 const DEFAULT_WINDOW: WindowState = { width: 1360, height: 900, maximized: false };
 
+function locationFile(): string {
+  return path.join(app.getPath('userData'), 'data-location.json');
+}
+
+/** Remembered next to the app, not inside the chosen folder, so the app can
+ *  find that folder again after a restart. */
+function readSavedDataDir(): string | null {
+  try {
+    const raw = JSON.parse(fs.readFileSync(locationFile(), 'utf8')) as { dir?: unknown };
+    if (typeof raw.dir !== 'string' || !path.isAbsolute(raw.dir)) return null;
+    return fs.statSync(raw.dir).isDirectory() ? raw.dir : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDataDir(dir: string): void {
+  const target = locationFile();
+  const temp = `${target}.${process.pid}.tmp`;
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(temp, JSON.stringify({ dir }, null, 2), 'utf8');
+  fs.renameSync(temp, target);
+}
+
 function userDataDir(): string {
   // `DAYBOOK_DATA_DIR` points the whole app (data, backups, window geometry) at
   // a scratch directory. It is how a fresh install and the upgrade of an
@@ -166,7 +190,7 @@ function userDataDir(): string {
   // data. Only an absolute path is accepted; anything else is ignored.
   const override = process.env.DAYBOOK_DATA_DIR;
   if (override && path.isAbsolute(override)) return override;
-  return app.getPath('userData');
+  return readSavedDataDir() ?? app.getPath('userData');
 }
 
 function ensureVisible(state: WindowState): WindowState {
@@ -612,6 +636,59 @@ function registerIpc(): void {
     return { ok: true };
   });
 
+  ipcMain.handle(CH.chooseDataFolder, async () => {
+    const result = await dialog.showOpenDialog(win!, {
+      title: 'Choose a folder for Daybook notes and app data',
+      buttonLabel: 'Use this folder',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, canceled: true };
+
+    const target = path.resolve(result.filePaths[0]);
+    const current = path.resolve(userDataDir());
+    if (target === current) return { ok: true, path: target };
+    if (target.startsWith(`${current}${path.sep}`)) {
+      return { ok: false, error: 'Choose a folder outside the current Daybook data folder.' };
+    }
+
+    const existing = path.join(target, 'daybook.json');
+    if (fs.existsSync(existing)) {
+      const choice = await dialog.showMessageBox(win!, {
+        type: 'question',
+        title: 'Use this folder?',
+        message: 'This folder already has Daybook data.',
+        detail: 'Daybook will open the notes and history already in this folder. Your current data will stay where it is.',
+        buttons: ['Use existing data', 'Cancel'],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      });
+      if (choice.response !== 0) return { ok: false, canceled: true };
+    } else {
+      try {
+        storage.flush();
+        fs.mkdirSync(target, { recursive: true });
+        if (fs.existsSync(storage.file)) fs.copyFileSync(storage.file, existing);
+        if (fs.existsSync(storage.backupDir)) {
+          fs.cpSync(storage.backupDir, path.join(target, 'backups'), { recursive: true });
+        }
+      } catch (err) {
+        return { ok: false, error: `Could not use that folder: ${(err as Error).message}` };
+      }
+    }
+
+    try {
+      saveDataDir(target);
+    } catch (err) {
+      return { ok: false, error: `Could not remember that folder: ${(err as Error).message}` };
+    }
+    setTimeout(() => {
+      app.relaunch();
+      app.exit(0);
+    }, 120);
+    return { ok: true, path: target };
+  });
+
   ipcMain.handle(CH.winMinimize, () => win?.minimize());
   ipcMain.handle(CH.winToggleMaximize, () => {
     if (!win) return false;
@@ -761,11 +838,6 @@ if (!gotLock) {
   app.whenReady().then(() => {
     storage = new Storage(userDataDir(), app.getVersion());
 
-    // First launch: seed a plausible back catalogue so every chart has a story.
-    if (!storage.get().meta.seeded) {
-      const seeded = applyAction(storage.get(), { type: 'data/reset', seed: true });
-      storage.set(seeded);
-    }
     storage.set(applyAction(storage.get(), { type: 'meta/patch', patch: { launches: storage.get().meta.launches + 1 } }));
     storage.flush();
 

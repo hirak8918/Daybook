@@ -1,6 +1,6 @@
 # electron-builder configuration for Daybook (Windows x64).
 #
-#   npm run dist  → NSIS installer  (release/Daybook-Setup-2.1.0.exe)
+#   npm run dist  → NSIS installer  (release/Daybook-Setup-2.2.0.exe)
 #
 # Per-user install by default (`perMachine: false`): no administrator rights,
 # a choice of directory, desktop + Start Menu shortcuts and a clean uninstaller.

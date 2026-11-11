@@ -5,6 +5,7 @@ import { AppSidebar, PageBar, type TabId } from './components/AppHeader';
 import { LogoMark } from './components/Logo';
 import { WindowControls } from './components/WindowControls';
 import { WelcomeScreen } from './views/WelcomeScreen';
+import { LaunchIntro } from './components/LaunchIntro';
 import { NoticeStack, type Notice } from './components/Overlays';
 import { DayDialog } from './components/DayDialog';
 import { HomeView } from './views/HomeView';
@@ -40,6 +41,7 @@ function Shell() {
   const [day, setDay] = useState<DateKey | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [welcomeDone, setWelcomeDone] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
 
   const boot = useBoot();
   // A name is all the Welcome screen is waiting for, so subscribe to just that:
@@ -171,7 +173,9 @@ function Shell() {
   if (ready && greet) welcomeAsked.current = true;
   const welcomeVisible = ready && !bootError && welcomeAsked.current && !welcomeDone;
 
-  useHotkeys(hotkeys, ready && !bootError && !welcomeVisible);
+  const introVisible = ready && !bootError && !welcomeVisible && !introDone && Boolean(profileName);
+
+  useHotkeys(hotkeys, ready && !bootError && !welcomeVisible && !introVisible);
 
   /* ------------------------------------------------ development layout guard */
   useEffect(() => {
@@ -231,7 +235,16 @@ function Shell() {
 
   // The Welcome screen owns the whole window until it has a name: no rail, no
   // page bar, and none of the shortcuts above.
-  if (welcomeVisible) return <WelcomeScreen onDone={() => setWelcomeDone(true)} />;
+  if (welcomeVisible) {
+    return (
+      <WelcomeScreen
+        onDone={() => {
+          setWelcomeDone(true);
+          setIntroDone(true);
+        }}
+      />
+    );
+  }
 
   const title =
     tab === 'home' ? `Today${profileName ? `, ${profileName}` : ''}` : tab === 'timer' ? 'Timer' : tab === 'activity' ? 'Activity' : 'Settings';
@@ -249,7 +262,7 @@ function Shell() {
 
   return (
     <div className="relative flex h-full overflow-hidden bg-paper">
-      {fullscreen ? null : <WindowControls />}
+      {fullscreen || introVisible ? null : <WindowControls />}
       {fullscreen ? null : <AppSidebar tab={tab} onTab={setTab} />}
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -270,6 +283,7 @@ function Shell() {
 
       <DayDialog date={day} onClose={() => setDay(null)} />
       <NoticeStack notices={notices} onDismiss={(id) => setNotices((list) => list.filter((n) => n.id !== id))} />
+      {introVisible ? <LaunchIntro name={profileName} onDone={() => setIntroDone(true)} /> : null}
     </div>
   );
 }

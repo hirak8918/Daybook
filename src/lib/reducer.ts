@@ -18,6 +18,9 @@ import {
   Goals,
   MovementEntry,
   NOTE_HTML_MAX,
+  NOTE_TITLE_MAX,
+  NOTES_MAX,
+  Note,
   ONBOARDING_VERSION,
   PomodoroConfig,
   Settings,
@@ -39,7 +42,11 @@ export type Action =
   | { type: 'settings/pomodoro'; patch: Partial<PomodoroConfig> }
   | { type: 'settings/addTag'; tag: string }
   | { type: 'settings/removeTag'; tag: string }
-  | { type: 'note/set'; html: string }
+  | { type: 'note/add'; id: string; title?: string; html?: string }
+  | { type: 'note/set'; id: string; html: string }
+  | { type: 'note/rename'; id: string; title: string }
+  | { type: 'note/update'; id: string; patch: { title?: string; html?: string } }
+  | { type: 'note/remove'; id: string }
   | { type: 'session/add'; date: DateKey; session: Omit<FocusSession, 'id'> }
   | { type: 'session/remove'; date: DateKey; id: string }
   | { type: 'session/update'; date: DateKey; id: string; patch: Partial<Omit<FocusSession, 'id'>> }
@@ -61,6 +68,16 @@ function getDay(state: DaybookData, date: DateKey): DayRecord {
 
 function withDay(state: DaybookData, date: DateKey, day: DayRecord): DaybookData {
   return { ...state, days: { ...state.days, [date]: day } };
+}
+
+function noteTitle(value: unknown): string {
+  return typeof value === 'string' ? value.trim().slice(0, NOTE_TITLE_MAX) || 'Untitled note' : 'Untitled note';
+}
+
+function nextStamp(previous: string): string {
+  const parsed = Date.parse(previous);
+  const now = Date.now();
+  return new Date(Number.isFinite(parsed) && now <= parsed ? parsed + 1 : now).toISOString();
 }
 
 export function applyAction(state: DaybookData, action: Action): DaybookData {
@@ -103,21 +120,69 @@ export function applyAction(state: DaybookData, action: Action): DaybookData {
       };
     }
 
+    case 'note/add': {
+      const id = typeof action.id === 'string' && action.id ? action.id.slice(0, 80) : uid('note');
+      if (state.notes.some((note) => note.id === id) || state.notes.length >= NOTES_MAX) return state;
+      const now = new Date().toISOString();
+      const note: Note = {
+        id,
+        title: noteTitle(action.title),
+        html: typeof action.html === 'string' ? action.html.slice(0, NOTE_HTML_MAX) : '',
+        createdAt: now,
+        updatedAt: now,
+      };
+      return { ...state, notes: [note, ...state.notes] };
+    }
+
     case 'note/set': {
-      // Two edits can land inside the same millisecond (the reducer is called on
-      // every keystroke), but the timestamp must still advance: it is how the
-      // file says which save is newer.
-      const previous = Date.parse(state.notes.updatedAt);
-      const now = Date.now();
-      const stamp = Number.isFinite(previous) && now <= previous ? previous + 1 : now;
+      const existing = state.notes.find((note) => note.id === action.id);
+      if (!existing) return state;
+      const html = typeof action.html === 'string' ? action.html.slice(0, NOTE_HTML_MAX) : '';
+      if (html === existing.html) return state;
       return {
         ...state,
-        notes: {
-          html: typeof action.html === 'string' ? action.html.slice(0, NOTE_HTML_MAX) : '',
-          updatedAt: new Date(stamp).toISOString(),
-        },
+        notes: state.notes.map((note) =>
+          note.id === action.id ? { ...note, html, updatedAt: nextStamp(note.updatedAt) } : note,
+        ),
       };
     }
+
+    case 'note/rename': {
+      const existing = state.notes.find((note) => note.id === action.id);
+      if (!existing) return state;
+      const title = noteTitle(action.title);
+      if (title === existing.title) return state;
+      return {
+        ...state,
+        notes: state.notes.map((note) =>
+          note.id === action.id ? { ...note, title, updatedAt: nextStamp(note.updatedAt) } : note,
+        ),
+      };
+    }
+
+    case 'note/update': {
+      const existing = state.notes.find((note) => note.id === action.id);
+      if (!existing) return state;
+      const title = action.patch?.title === undefined ? existing.title : noteTitle(action.patch.title);
+      const html =
+        action.patch?.html === undefined
+          ? existing.html
+          : typeof action.patch.html === 'string'
+            ? action.patch.html.slice(0, NOTE_HTML_MAX)
+            : existing.html;
+      if (title === existing.title && html === existing.html) return state;
+      return {
+        ...state,
+        notes: state.notes.map((note) =>
+          note.id === action.id ? { ...note, title, html, updatedAt: nextStamp(note.updatedAt) } : note,
+        ),
+      };
+    }
+
+    case 'note/remove':
+      return state.notes.some((note) => note.id === action.id)
+        ? { ...state, notes: state.notes.filter((note) => note.id !== action.id) }
+        : state;
 
     case 'session/add': {
       const day = getDay(state, action.date);
@@ -217,7 +282,7 @@ export function applyAction(state: DaybookData, action: Action): DaybookData {
         version: DATA_VERSION,
         createdAt: new Date().toISOString(),
         settings: structuredCloneSafe(DEFAULT_SETTINGS),
-        notes: { html: '', updatedAt: new Date().toISOString() },
+        notes: [],
         days,
         timer: {
           mode: 'focus',
@@ -258,7 +323,11 @@ const ACTION_TYPES = new Set<Action['type']>([
   'settings/pomodoro',
   'settings/addTag',
   'settings/removeTag',
+  'note/add',
   'note/set',
+  'note/rename',
+  'note/update',
+  'note/remove',
   'session/add',
   'session/remove',
   'session/update',
@@ -304,8 +373,33 @@ export function sanitizeAction(raw: unknown): Action | null {
   if (type === 'settings/addTag' && typeof out.tag === 'string') out.tag = out.tag.slice(0, 24);
   if (type === 'settings/removeTag' && typeof out.tag === 'string') out.tag = out.tag.slice(0, 24);
   if (type === 'note/set') {
+    if (typeof out.id !== 'string') return null;
+    out.id = out.id.slice(0, 80);
     if (typeof out.html !== 'string') return null;
     out.html = out.html.slice(0, NOTE_HTML_MAX);
+  }
+  if (type === 'note/add') {
+    if (typeof out.id !== 'string') return null;
+    out.id = out.id.slice(0, 80);
+    if (out.title !== undefined) out.title = noteTitle(out.title);
+    if (out.html !== undefined) out.html = String(out.html).slice(0, NOTE_HTML_MAX);
+  }
+  if (type === 'note/rename') {
+    if (typeof out.id !== 'string') return null;
+    out.id = out.id.slice(0, 80);
+    if (typeof out.title !== 'string') return null;
+    out.title = noteTitle(out.title);
+  }
+  if (type === 'note/update') {
+    if (typeof out.id !== 'string' || !out.patch || typeof out.patch !== 'object') return null;
+    out.id = out.id.slice(0, 80);
+    const patch = out.patch as Record<string, unknown>;
+    if (patch.title !== undefined) patch.title = noteTitle(patch.title);
+    if (patch.html !== undefined) patch.html = String(patch.html).slice(0, NOTE_HTML_MAX);
+  }
+  if (type === 'note/remove') {
+    if (typeof out.id !== 'string') return null;
+    out.id = out.id.slice(0, 80);
   }
   if (type === 'session/add' && out.session && typeof out.session === 'object') {
     const s = out.session as Record<string, unknown>;

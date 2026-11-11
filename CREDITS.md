@@ -25,7 +25,7 @@ owner's own image.
 | `assets/onboarding/welcome-bg.png` | Knight resting in a golden wildflower meadow | The owner | Used with permission | Supplied with the project |
 
 The `.jpg` and `.png` files are the sources. `npm run assets` keeps the derived
-WebPs current, but neither the sources nor the WebPs are bundled with 2.1.0.
+WebPs current, but neither the sources nor the WebPs are bundled with 2.2.0.
 
 ## Typeface
 

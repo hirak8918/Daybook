@@ -1,5 +1,5 @@
 /**
- * Tasks — the single rolling to-do list.
+ * Tasks — the daily list that carries what is unfinished into tomorrow.
  *
  * v1 kept a separate list per day (with carry-over between editions). v2 shows
  * one list. The storage did not change: tasks still live inside their day
@@ -9,6 +9,8 @@
  *   · the list is every open task created from `meta.tasksStartAt` onwards
  *   · checking a task sets `done` + `doneAt`, so it drops out of the list and
  *     counts toward the day it was finished on
+ *   · an open task whose day has passed is shown under "Remaining" with the
+ *     day it came from, so yesterday's work is visible instead of forgotten
  *   · open tasks from the retired per-day editions stay in the file, untouched
  *     and unlisted, instead of flooding a list meant to stay calm
  *   · at most MAX_OPEN_TASKS are shown; the rest wait their turn
@@ -17,12 +19,14 @@
 import { DateKey, toKey } from './date';
 import type { DaybookData, Task } from './schema';
 
-/** The list never grows past this: it is what makes "no scroll" possible. */
-export const MAX_OPEN_TASKS = 7;
+/** A guard against a runaway list; the card itself scrolls after this. */
+export const MAX_OPEN_TASKS = 50;
 
 export interface OpenTask extends Task {
   /** The day record the task is stored in (needed for updates and deletes). */
   date: DateKey;
+  /** The day the task belongs to, which is its date record. */
+  origin: DateKey;
 }
 
 function createdKey(task: Task): DateKey {
@@ -44,7 +48,7 @@ export function openTasks(data: DaybookData): OpenTask[] {
     for (const task of day.tasks) {
       if (task.done) continue;
       if (!inRollingList(data, task)) continue;
-      out.push({ ...task, date });
+      out.push({ ...task, date, origin: date });
     }
   }
   return out.sort((a, b) => {
@@ -57,6 +61,21 @@ export function openTasks(data: DaybookData): OpenTask[] {
 export function visibleTasks(data: DaybookData): { shown: OpenTask[]; waiting: number; total: number } {
   const all = openTasks(data);
   return { shown: all.slice(0, MAX_OPEN_TASKS), waiting: Math.max(0, all.length - MAX_OPEN_TASKS), total: all.length };
+}
+
+/** Today's tasks and the older work still waiting, in the order Home shows it. */
+export function taskBuckets(
+  data: DaybookData,
+  today: DateKey,
+): { today: OpenTask[]; carried: OpenTask[]; total: number } {
+  const all = openTasks(data);
+  const current = all
+    .filter((task) => task.origin === today)
+    .sort((a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt));
+  const carried = all
+    .filter((task) => task.origin < today)
+    .sort((a, b) => a.origin.localeCompare(b.origin) || a.order - b.order);
+  return { today: current.slice(0, MAX_OPEN_TASKS), carried, total: all.length };
 }
 
 /** True while the list is at capacity: the input is disabled, not hidden. */

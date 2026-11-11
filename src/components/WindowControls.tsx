@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useBoot, useStoreApi } from '../lib/store';
 
 /**
@@ -42,8 +42,9 @@ export function WindowControls() {
 
   return (
     <div
-      className="no-drag fixed right-0 top-0 z-[90] flex h-12 items-stretch bg-paper"
+      className="no-drag pointer-events-auto fixed right-0 top-0 z-[90] flex h-12 items-stretch bg-paper"
       data-window-controls="true"
+      style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
       <Control label="Minimize" onClick={() => store.bridge.window.minimize()}>
         <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
@@ -82,12 +83,33 @@ function Control({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const fired = useRef(false);
+  const press = () => {
+    fired.current = true;
+    onClick();
+  };
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
-      onClick={onClick}
+      // Pointer-down is deliberate: it fires before Windows/Chromium can begin
+      // a drag from the header underneath the button. The click fallback keeps
+      // the control keyboard-accessible without double-firing for a mouse.
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        press();
+      }}
+      onClick={() => {
+        if (fired.current) {
+          fired.current = false;
+          return;
+        }
+        onClick();
+      }}
+      style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       className={`no-drag flex h-12 w-[46px] items-center justify-center text-ink-soft transition-colors duration-100 hover:text-ink ${
         close ? 'hover:bg-[#c42b1c] hover:text-white' : 'hover:bg-paper-deep'
       }`}
