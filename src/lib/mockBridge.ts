@@ -19,7 +19,7 @@ import { toKey } from './date';
 type Listener = (payload: unknown) => void;
 
 export function createMockBridge(): DaybookBridge {
-  let data: DaybookData = applyAction(defaultData(), { type: 'data/reset', seed: true });
+  let data: DaybookData = defaultData();
   const listeners: Record<BridgeEvent, Set<Listener>> = {
     data: new Set(),
     timer: new Set(),
@@ -122,7 +122,7 @@ export function createMockBridge(): DaybookBridge {
     data,
     dark: Boolean(darkMq?.matches),
     systemDark: Boolean(darkMq?.matches),
-    version: '2.1.0-preview',
+    version: '2.2.0-preview',
     platform: 'win32',
     isPackaged: false,
     maximized: false,
@@ -157,6 +157,7 @@ export function createMockBridge(): DaybookBridge {
     exportData: async () => ({ ok: true, path: '(browser preview — blocked)' }),
     importData: async () => ({ ok: false, canceled: true }),
     openDataFolder: async () => ({ ok: false }),
+    chooseDataFolder: async () => ({ ok: false, canceled: true, error: 'Choose a folder in the desktop app.' }),
     window: {
       minimize: () => undefined,
       toggleMaximize: async () => {
@@ -242,7 +243,7 @@ export function createMockBridge(): DaybookBridge {
       get: async () => snapshot(),
     },
     app: {
-      version: async () => '1.0.0-preview',
+      version: async () => '2.2.0-preview',
       openExternal: async (url: string) => {
         window.open(url, '_blank', 'noopener');
         return { ok: true };

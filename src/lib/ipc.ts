@@ -18,6 +18,7 @@ export const CH = {
   export: 'data:export',
   import: 'data:import',
   openDataFolder: 'data:openFolder',
+  chooseDataFolder: 'data:chooseFolder',
 
   winMinimize: 'window:minimize',
   winToggleMaximize: 'window:toggleMaximize',
@@ -128,6 +129,7 @@ export interface DaybookBridge {
   exportData(): Promise<StorageResult>;
   importData(): Promise<ImportResult>;
   openDataFolder(): Promise<{ ok: boolean }>;
+  chooseDataFolder(): Promise<StorageResult>;
   window: {
     minimize(): void;
     toggleMaximize(): Promise<boolean>;

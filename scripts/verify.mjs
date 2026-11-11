@@ -281,6 +281,22 @@ const tab = (label) =>
 
 const key = (type, opts) => cdp.send('Input.dispatchKeyEvent', { type, ...opts });
 
+/** A real pointer press, not element.click(). This is the only way to prove
+ *  the caption buttons survive the Windows drag region. */
+async function clickControl(label) {
+  const point = await page(`(() => {
+    const button = [...document.querySelectorAll('[data-window-controls] button')]
+      .find((candidate) => candidate.getAttribute('aria-label') === ${JSON.stringify(label)});
+    if (!button) return null;
+    const rect = button.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  })()`);
+  if (!point) throw new Error(`caption button ${label} is missing`);
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
+    await cdp.send('Input.dispatchMouseEvent', { type, x: point.x, y: point.y, button: 'left', clickCount: 1 });
+  }
+}
+
 /**
  * Capture the page as a PNG, or null.
  *
@@ -349,7 +365,7 @@ async function beginSession(env) {
   await cdp.send('Page.enable').catch(() => {});
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: INJECT });
   await cdp.send('Page.reload', { ignoreCache: false });
-  await sleep(4500);
+    await sleep(4500);
   await page(INJECT);
   // A covered window stops painting (Windows reports it occluded and Chromium
   // hides it from the page), which stalls animations, observers and
@@ -478,6 +494,14 @@ try {
   check('the caption buttons stay clear of the drag region', welcome.overCaption === false && welcome.strip.right <= 1440 - 130, welcome);
   check('the Welcome screen never scrolls', welcome.scrolls <= 1 && welcome.docScroll[0] <= 1 && welcome.docScroll[1] <= 1 && welcome.scrollables === 0, welcome);
 
+  await clickControl('Maximize');
+  await sleep(450);
+  const maximized = await page('window.daybook.window.isMaximized()');
+  await clickControl('Restore');
+  await sleep(450);
+  const restored = await page('window.daybook.window.isMaximized()');
+  check('a real pointer on the caption buttons maximizes and restores', maximized === true && restored === false, { maximized, restored });
+
   if (SHOTS) {
     const dir = path.resolve(root, SHOTS);
     fs.mkdirSync(dir, { recursive: true });
@@ -560,8 +584,8 @@ try {
   await sleep(800);
   const fresh = readData(freshDir);
   check('the name reaches the data file', fresh?.profile?.name === 'Ada Lovelace', fresh?.profile);
-  check('the document is saved at schema v4', fresh?.version === 4, fresh?.version);
-  check('the note sheet is empty on day one', fresh?.notes?.html === '', fresh?.notes);
+  check('the document is saved at schema v5', fresh?.version === 5, fresh?.version);
+  check('a clean install has no notes, days or demo data', Array.isArray(fresh?.notes) && fresh.notes.length === 0 && Object.keys(fresh?.days ?? {}).length === 0, fresh?.notes);
 
   /* ================================================================== *
    * Phase 2 — shell, notes, tasks and the home page.
@@ -594,56 +618,56 @@ try {
   check('the old editorial copy is gone', shell.oldCopy === false, shell.oldCopy);
 
   const home = await page(`(() => {
-    const notes = document.querySelector('.note-prose');
-    const size = document.querySelector('select[aria-label="Text size"]');
-    const tools = size ? [...size.options].map((option) => option.textContent.trim()) : [];
     const families = [...document.querySelectorAll('main h1, main h2, main p, main span, main button, main input, main select, main label')]
       .filter((el) => el.textContent.trim() && el.getBoundingClientRect().width > 0)
       .map((el) => getComputedStyle(el).fontFamily);
     return {
-      notes: Boolean(notes),
-      noteFont: notes ? getComputedStyle(notes).fontFamily : '',
-      placeholder: notes?.querySelector('p')?.className ?? '',
-      bold: Boolean(document.querySelector('button[aria-label="Bold"]')),
-      italic: Boolean(document.querySelector('button[aria-label="Italic"]')),
-      underline: Boolean(document.querySelector('button[aria-label="Underline"]')),
-      sizes: tools,
+      cards: document.querySelectorAll('[data-note-card]').length,
+      newNote: Boolean(document.querySelector('main button.btn-primary')),
+      search: Boolean(document.querySelector('input[aria-label="Search notes"]')),
+      editor: Boolean(document.querySelector('.note-prose')),
       otherFonts: [...new Set(families.filter((font) => !/Fraunces/.test(font)))],
       taskInput: Boolean(document.querySelector('input[aria-label="Add a task"]')),
-      primary: document.querySelectorAll('main button.btn-primary').length,
       focus: document.querySelector('section[aria-labelledby="home-focus"] p.tab')?.textContent.trim() ?? null,
       movement: /Movement|Start focus/i.test(document.querySelector('main').innerText),
-      noteScrolls: Boolean(notes && notes.scrollHeight > notes.clientHeight),
     };
   })()`);
-  check('Home leads with a notes editor', home.notes === true, home);
-  check('the editor has bold, italic and underline', home.bold && home.italic && home.underline, home);
-  check(
-    'the editor offers Word-style numeric text sizes',
-    home.sizes.join(',') === 'Size,12,14,16,18,20,24,28,32,36,48',
-    home.sizes,
-  );
-  check('every UI label is Fraunces', /Fraunces/.test(home.noteFont) && home.otherFonts.length === 0, {
-    note: home.noteFont,
-    other: home.otherFonts,
-  });
+  check('Home starts as an empty note library', home.cards === 0 && home.editor === false, home);
+  check('Home has a new-note action and a search field', home.newNote && home.search, home);
+  check('every UI label is Fraunces', home.otherFonts.length === 0, { other: home.otherFonts });
   check('the task input is on Home', home.taskInput === true);
-  check('Home has no Start focus action and no movement', home.primary === 0 && home.movement === false, home);
+  check('Home has no Start focus action and no movement', home.movement === false, home);
   check('the focus figure uses the one duration format', /^(\d+h \d{2}m|\d+m)$/.test(home.focus ?? ''), home.focus);
 
-  // Type, select and format a note; it must be in the editor and on disk.
-  const typed = await page(`(async () => {
+  // Create a note, title it, type, format it, save, and return to the cards.
+  const opened = await page(`(async () => {
+    document.querySelector('main button.btn-primary').click();
+    const editor = await window.__wait(() => Boolean(document.querySelector('.note-prose')), 3000);
+    const title = document.querySelector('input[aria-label="Note title"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(title, 'Launch notes');
+    title.dispatchEvent(new Event('input', { bubbles: true }));
     const prose = document.querySelector('.note-prose');
     prose.focus();
     document.execCommand('insertText', false, 'A note for today.');
     await new Promise((r) => setTimeout(r, 150));
-    return prose.innerText.trim();
+    return {
+      editor,
+      title: title.value,
+      typed: prose.innerText.trim(),
+      sizes: (() => { const size = document.querySelector('select[aria-label="Text size"]'); return size ? [...size.options].map((o) => o.textContent.trim()) : []; })(),
+      bold: Boolean(document.querySelector('button[aria-label="Bold"]')),
+      italic: Boolean(document.querySelector('button[aria-label="Italic"]')),
+      underline: Boolean(document.querySelector('button[aria-label="Underline"]')),
+      noteFont: getComputedStyle(prose).fontFamily,
+    };
   })()`);
-  check('typing reaches the note editor', String(typed).includes('A note for today.'), typed);
+  check('a note opens in the titled editor', opened.editor === true && opened.title === 'Launch notes', opened);
+  check('typing reaches the note editor', String(opened.typed).includes('A note for today.'), opened.typed);
+  check('the editor has bold, italic and underline', opened.bold && opened.italic && opened.underline, opened);
+  check('the editor offers Word-style numeric text sizes', opened.sizes.join(',') === 'Size,12,14,16,18,20,24,28,32,36,48', opened.sizes);
+  check('the editor is Fraunces', /Fraunces/.test(opened.noteFont), opened.noteFont);
 
-  // Select through the editor's own keymap, exactly as a person would. The
-  // toolbar's chain().focus() restores ProseMirror's selection, so a DOM range
-  // set from outside the editor would be discarded before the mark is applied.
   await key('rawKeyDown', { key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 2 });
   await key('keyUp', { key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 2 });
   await sleep(180);
@@ -657,13 +681,52 @@ try {
     const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
     setter.call(select, '20');
     select.dispatchEvent(new Event('change', { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 900));
-    return { html: document.querySelector('.note-prose').innerHTML, text: document.querySelector('.note-prose').innerText.trim() };
+    document.querySelector('button[aria-label="Save note"]').click();
+    await new Promise((r) => setTimeout(r, 700));
+    return { html: document.querySelector('.note-prose').innerHTML, text: document.querySelector('.note-prose').innerText.trim(), saved: document.body.innerText.includes('Saved') };
   })()`);
   check('bold and 20px are applied', /<strong>/.test(note.html) && /font-size:\s*20px/.test(note.html), note.html);
-  await sleep(700);
-  const savedNote = readData(freshDir)?.notes?.html ?? '';
-  check('the note is saved to the document', /A note for today/.test(savedNote) && /<strong>/.test(savedNote) && /font-size:\s*20px/.test(savedNote), savedNote);
+  await sleep(500);
+  const savedNote = readData(freshDir)?.notes?.[0]?.html ?? '';
+  check('Save writes the titled note to the document', /A note for today/.test(savedNote) && /<strong>/.test(savedNote) && /font-size:\s*20px/.test(savedNote), savedNote);
+
+  const back = await page(`(async () => {
+    document.querySelector('button[aria-label="All notes"]').click();
+    const cards = await window.__wait(() => document.querySelectorAll('[data-note-card]').length === 1, 3000);
+    return { cards, title: document.querySelector('[data-note-card]')?.innerText.trim() ?? '' };
+  })()`);
+  check('the saved note appears as a card with its title', back.cards && /Launch notes/.test(back.title), back);
+
+  const second = await page(`(async () => {
+    document.querySelector('main button.btn-primary').click();
+    await window.__wait(() => Boolean(document.querySelector('.note-prose')), 3000);
+    const title = document.querySelector('input[aria-label="Note title"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(title, 'Second page');
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    const prose = document.querySelector('.note-prose');
+    prose.focus();
+    document.execCommand('insertText', false, 'Another page.');
+    document.querySelector('button[aria-label="Save note"]').click();
+    await new Promise((r) => setTimeout(r, 700));
+    document.querySelector('button[aria-label="All notes"]').click();
+    const cards = await window.__wait(() => document.querySelectorAll('[data-note-card]').length === 2, 3000);
+    const search = document.querySelector('input[aria-label="Search notes"]');
+    const inputSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    inputSetter.call(search, 'Second');
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 250));
+    return { cards, filtered: document.querySelectorAll('[data-note-card]').length, search: search.value };
+  })()`);
+  check('multiple notes become multiple cards', second.cards === true, second);
+  check('search narrows the cards by title', second.filtered === 1 && second.search === 'Second', second);
+  await page(`(() => { const s = document.querySelector('input[aria-label="Search notes"]'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(s, ''); s.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+
+  // The note survives leaving and returning to Home.
+  await tab('Timer');
+  await tab('Home');
+  const notesBack = await page(`[...document.querySelectorAll('[data-note-card]')].map((card) => card.innerText).join('|')`);
+  check('notes survive a tab switch', /Launch notes/.test(notesBack) && /Second page/.test(notesBack), notesBack);
 
   // Tasks: add, complete, then fill the list to its cap at the minimum window.
   const task = await page(`(async () => {
@@ -685,6 +748,22 @@ try {
   })()`);
   check('a task can be added on Home', task.added === true, task);
   check('checking it removes it from the open list and offers Undo', task.stillOpen === false && task.undo === true, task);
+
+  const carried = await page(`(async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const pad = (n) => String(n).padStart(2, '0');
+    const key = yesterday.getFullYear() + '-' + pad(yesterday.getMonth() + 1) + '-' + pad(yesterday.getDate());
+    await window.daybook.dispatch({ type: 'task/add', date: key, title: 'Carry over check' });
+    const shown = await window.__wait(() => document.body.innerText.includes('Remaining from earlier'), 3000);
+    const row = [...document.querySelectorAll('section[aria-labelledby="home-tasks"] li')]
+      .find((li) => li.textContent.includes('Carry over check'));
+    const label = row?.innerText.includes('From yesterday') ?? false;
+    row?.querySelector('button[aria-label^="Delete"]')?.click();
+    const removed = await window.__wait(() => !document.body.innerText.includes('Carry over check'), 2500);
+    return { shown, label, removed };
+  })()`);
+  check('unfinished work is shown as remaining from yesterday', carried.shown && carried.label && carried.removed, carried);
 
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1000, height: 600, deviceScaleFactor: 1, mobile: false });
   await sleep(300);
@@ -716,17 +795,11 @@ try {
     result.cleaned = document.querySelectorAll('button[aria-label^="Delete Cap task"]').length;
     return result;
   })()`);
-  check('the task list stops at its seven-item cap', cap.full === true && cap.rows <= 7, cap);
-  check('a full task list still fits the smallest window', cap.mainOverflow <= 1 && cap.listOverflow <= 1, cap);
+  check('the daily list is not cut off at seven', cap.full === false && cap.rows === 9, cap);
+  check('a long task list scrolls inside its card without moving the page', cap.mainOverflow <= 1, cap);
   check('the verification tasks are cleaned up', cap.cleaned === 0, cap);
   await cdp.send('Emulation.clearDeviceMetricsOverride');
   await sleep(250);
-
-  // The note survives leaving and returning to Home.
-  await tab('Timer');
-  await tab('Home');
-  const noteBack = await page(`document.querySelector('.note-prose')?.innerText.trim() ?? ''`);
-  check('the note survives a tab switch', String(noteBack).includes('A note for today.'), noteBack);
 
   /* ================================================================== *
    * Phase 3 — the timer, still the one place to start focus.
@@ -801,6 +874,7 @@ try {
       cells: cells.length,
       columns: new Set([...cells].map((c) => c.dataset.col)).size,
       chart: Boolean(document.querySelector('svg[aria-label*="last 30 days"]')),
+      empty: /No focus time yet\./i.test(document.querySelector('main')?.innerText ?? ''),
       controls: document.querySelectorAll('main .seg button').length,
       tagChart: /By tag|Other|No tag/i.test(document.querySelector('main').innerText),
       insight: /You focus best/i.test(document.body.innerText),
@@ -808,7 +882,7 @@ try {
   })()`);
   check('Activity shows exactly three focus figures', activity.figures.join(',') === 'Today,This week,Streak', activity.figures);
   check('the year calendar is still 53 × 7', activity.cells === 371 && activity.columns === 53, activity);
-  check('the 30-day chart is on screen', activity.chart === true);
+  check('the 30-day chart is on screen, or an honest empty state', activity.chart === true || activity.empty === true, activity);
   check('the old filters, tag chart and insight line are gone', activity.controls === 0 && activity.tagChart === false && activity.insight === false, activity);
 
   const dayDialog = await page(`(async () => {
@@ -847,12 +921,14 @@ try {
       theme: [...document.querySelectorAll('main .seg button')].map((b) => b.textContent.trim()),
       prose: /These three numbers|Every change|Everything is stored|Changes apply|A running session|One JSON file|Export writes/i.test(text),
       erase: text.includes('Erase all data'),
+      folder: text.includes('Change folder') && text.includes('verify-data'),
     };
   })()`);
   check('Settings is four plain cards', settings.cards.join(',') === 'Goals,App,Timer,Data', settings.cards);
   check('the numbered headings and explanatory copy are gone', settings.numbered === false && settings.prose === false, settings);
   check('the name and theme controls remain', settings.name && settings.theme.join(',') === 'Auto,Light,Dark', settings);
   check('there is one destructive action', settings.erase === true);
+  check('the data card shows the current folder and offers to change it', settings.folder === true, settings);
 
   const renamed = await page(`(async () => {
     const field = document.querySelector('main input[aria-label="Your name"]');
@@ -1012,6 +1088,9 @@ try {
     beforeUpgrade.version = 3;
     delete beforeUpgrade.notes;
     delete beforeUpgrade.profile;
+    // This phase is specifically about preserving a real history. The demo
+    // cleanup has its own upgrade test in the unit suite.
+    beforeUpgrade.meta = { ...(beforeUpgrade.meta ?? {}), seeded: false };
     seedText = JSON.stringify(beforeUpgrade);
     fs.writeFileSync(path.join(upgradeDir, 'daybook.json'), seedText);
   }
@@ -1046,19 +1125,21 @@ try {
     JSON.stringify(census(afterUpgrade)) === JSON.stringify(census(beforeUpgrade)),
     { before: census(beforeUpgrade), after: census(afterUpgrade) },
   );
-  check('the upgrade gains a note sheet without touching old data', typeof afterUpgrade?.notes?.html === 'string', afterUpgrade?.notes);
+  check('the upgrade gains an empty note library without touching old data', Array.isArray(afterUpgrade?.notes) && afterUpgrade.notes.length === 0, afterUpgrade?.notes);
 
   await endSession();
   await beginSession({ DAYBOOK_DATA_DIR: upgradeDir });
   const settled = await page(`(async () => {
-    await new Promise((r) => setTimeout(r, 1200));
+    await window.__wait(() => !document.querySelector('[data-launch-intro]'), 4000);
     return {
       welcome: Boolean(document.querySelector('#daybook-welcome')),
       aside: Boolean(document.querySelector('aside')),
+      intro: Boolean(document.querySelector('[data-launch-intro]')),
       heading: document.querySelector('header h1')?.textContent.trim() ?? null,
     };
   })()`);
   check('a saved name means the Welcome screen never comes back', settled.welcome === false && settled.aside, settled);
+  check('the launch greeting plays once and then leaves', settled.intro === false, settled);
   check('the second launch opens Home under that name', settled.heading === 'Today, Grace Hopper-Wells', settled);
 
   await endSession();

@@ -21,15 +21,25 @@
  * It is one document-level field, not a per-day note: the sheet is a scratchpad
  * that stays put while the days change underneath it. The old per-day `note`
  * strings are still preserved untouched.
+ *
+ * v5 (Daybook 2.2.0) turns that single sheet into a list of titled notes, so
+ * Home can show a card for each one and search across them. A v4 note becomes
+ * the first note in the list. This is also the release that retires the demo
+ * back catalogue: seeded rows are removed on upgrade, while anything the owner
+ * wrote or added themselves is kept.
  */
 
 import { toKey } from './date';
 import { cleanName, nameError } from './name';
 
-export const DATA_VERSION = 4;
+export const DATA_VERSION = 5;
 
-/** The note sheet is a scratchpad, not an archive: cap the stored markup. */
+/** A single note is a sheet, not an archive: cap the stored markup. */
 export const NOTE_HTML_MAX = 200_000;
+
+/** Keep the library bounded even if the renderer sends a runaway list. */
+export const NOTES_MAX = 200;
+export const NOTE_TITLE_MAX = 120;
 
 /** The Welcome payload's own version, so a future redesign can ask again. */
 export const ONBOARDING_VERSION = 1;
@@ -155,9 +165,12 @@ export interface OnboardingState {
   version: number;
 }
 
-/** The Home note sheet. HTML is produced by the editor's constrained schema. */
-export interface NoteSheet {
+/** A titled note in the Home library. HTML is produced by the editor's schema. */
+export interface Note {
+  id: string;
+  title: string;
   html: string;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -166,8 +179,8 @@ export interface DaybookData {
   /** ISO datetime of first launch. */
   createdAt: string;
   settings: Settings;
-  /** The single Home note. Empty until the owner writes something. */
-  notes: NoteSheet;
+  /** The Home note library. Empty until the owner writes something. */
+  notes: Note[];
   days: Record<string, DayRecord>;
   timer: TimerState;
   /** Absent until the owner has named themselves on the Welcome screen. */
@@ -238,7 +251,7 @@ export function defaultData(now = new Date()): DaybookData {
     version: DATA_VERSION,
     createdAt: iso,
     settings: structuredCloneSafe(DEFAULT_SETTINGS),
-    notes: { html: '', updatedAt: iso },
+    notes: [],
     days: {},
     timer: defaultTimer(),
     meta: { launches: 0, lastOpenedAt: iso, seeded: false, tasksStartAt: null },
@@ -312,6 +325,63 @@ const MIGRATIONS: Record<number, Migration> = {
   // 3 → 4 (Daybook 2.0.0): the Home note sheet. Additive: the sanitizer below
   // gives older documents an empty sheet, and no history is rewritten.
   3: (data) => ({ ...data, version: 4 }),
+
+  // 4 → 5 (Daybook 2.2.0): a note library, and a clean first launch. The demo
+  // rows are identifiable by their `seed_` ids; filter only those so a task or
+  // session the owner added to a demo day is not swept away with them.
+  4: (data) => {
+    const rawNotes = data.notes;
+    let notes: unknown[] = [];
+    if (Array.isArray(rawNotes)) {
+      notes = rawNotes;
+    } else if (rawNotes && typeof rawNotes === 'object') {
+      const sheet = rawNotes as { html?: unknown; updatedAt?: unknown };
+      const html = typeof sheet.html === 'string' ? sheet.html.slice(0, NOTE_HTML_MAX) : '';
+      if (html.trim()) {
+        const stamp = typeof sheet.updatedAt === 'string' ? sheet.updatedAt : new Date().toISOString();
+        notes = [{ id: 'note_legacy', title: 'First note', html, createdAt: stamp, updatedAt: stamp }];
+      }
+    }
+
+    const rawMeta = (data.meta ?? {}) as Record<string, unknown>;
+    let days = data.days;
+    if (rawMeta.seeded === true && days && typeof days === 'object') {
+      const cleaned: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(days as Record<string, unknown>)) {
+        if (!value || typeof value !== 'object') continue;
+        const day = value as Record<string, unknown>;
+        const keep = (list: unknown) =>
+          Array.isArray(list)
+            ? list.filter((entry) => {
+                const id = entry && typeof entry === 'object' ? String((entry as Record<string, unknown>).id ?? '') : '';
+                return !id.startsWith('seed_');
+              })
+            : [];
+        const sessions = keep(day.sessions);
+        const movements = keep(day.movements);
+        const tasks = keep(day.tasks);
+        // A day made entirely of demo rows disappears; a day with anything the
+        // owner added stays, without the demo rows or its demo note.
+        if (!sessions.length && !movements.length && !tasks.length) continue;
+        cleaned[key] = { ...day, sessions, movements, tasks, note: '' };
+      }
+      days = cleaned;
+    }
+
+    return {
+      ...data,
+      version: 5,
+      notes,
+      days,
+      meta: {
+        ...rawMeta,
+        seeded: false,
+        // A seeded document's old anchor was only hiding the demo backlog. A
+        // real document keeps its anchor so retired v1 leftovers stay retired.
+        tasksStartAt: rawMeta.seeded === true ? null : rawMeta.tasksStartAt,
+      },
+    };
+  },
 };
 
 /**
@@ -337,6 +407,23 @@ function sanitizeOnboarding(raw: unknown, hasProfile: boolean): OnboardingState 
     // however the file was edited by hand.
     completed: hasProfile || o.completed === true,
     version: Number.isFinite(version) && version > 0 ? version : ONBOARDING_VERSION,
+  };
+}
+
+function sanitizeNote(raw: unknown, fallback: string, index: number): Note | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const n = raw as Record<string, unknown>;
+  const html = typeof n.html === 'string' ? n.html.slice(0, NOTE_HTML_MAX) : '';
+  const title = typeof n.title === 'string' ? n.title.trim().slice(0, NOTE_TITLE_MAX) : '';
+  if (!html.trim() && !title) return null;
+  const created = typeof n.createdAt === 'string' && n.createdAt ? n.createdAt : fallback;
+  const updated = typeof n.updatedAt === 'string' && n.updatedAt ? n.updatedAt : created;
+  return {
+    id: typeof n.id === 'string' && n.id ? n.id.slice(0, 80) : `note_${index}`,
+    title: title || 'Untitled note',
+    html,
+    createdAt: created,
+    updatedAt: updated,
   };
 }
 
@@ -489,11 +576,20 @@ export function migrate(raw: unknown): DaybookData {
   const rawMeta = (data.meta ?? {}) as Partial<DaybookData['meta']>;
   const createdAt = typeof data.createdAt === 'string' ? data.createdAt : base.createdAt;
   const profile = sanitizeProfile(data.profile, createdAt);
-  const rawNotes = (data.notes ?? {}) as Partial<NoteSheet>;
-  const notes: NoteSheet = {
-    html: typeof rawNotes.html === 'string' ? rawNotes.html.slice(0, NOTE_HTML_MAX) : '',
-    updatedAt: typeof rawNotes.updatedAt === 'string' ? rawNotes.updatedAt : createdAt,
-  };
+  const rawNotes = data.notes;
+  const noteSource = Array.isArray(rawNotes)
+    ? rawNotes
+    : rawNotes && typeof rawNotes === 'object'
+      ? [rawNotes]
+      : [];
+  const notes: Note[] = [];
+  const seenNotes = new Set<string>();
+  for (let index = 0; index < noteSource.length && notes.length < NOTES_MAX; index++) {
+    const note = sanitizeNote(noteSource[index], createdAt, index);
+    if (!note || seenNotes.has(note.id)) continue;
+    seenNotes.add(note.id);
+    notes.push(note);
+  }
   return {
     version: DATA_VERSION,
     createdAt,
