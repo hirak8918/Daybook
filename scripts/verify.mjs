@@ -598,10 +598,15 @@ try {
     const nav = document.querySelector('nav[aria-label="Sections"]');
     const aside = document.querySelector('aside');
     const header = document.querySelector('header');
+    const controls = document.querySelector('[data-window-controls]');
+    const headerRect = header?.getBoundingClientRect();
+    const controlsRect = controls?.getBoundingClientRect();
     return {
       nav: [...(nav?.querySelectorAll('button') ?? [])].map((b) => b.textContent.trim()),
       asideWidth: aside ? Math.round(aside.getBoundingClientRect().width) : 0,
       headerHeight: header ? Math.round(header.getBoundingClientRect().height) : 0,
+      headerRight: headerRect ? Math.round(headerRect.right) : null,
+      controlsLeft: controlsRect ? Math.round(controlsRect.left) : null,
       pageTitle: header?.querySelector('h1')?.textContent.trim() ?? null,
       contentHeight: Math.round(document.querySelector('main').getBoundingClientRect().height),
       viewportHeight: innerHeight,
@@ -613,6 +618,11 @@ try {
   check('the rail has the four sections in order', shell.nav.join(',') === 'Home,Timer,Activity,Settings', shell.nav);
   check('the rail is a fixed sidebar, not a header strip', shell.asideWidth >= 150 && shell.asideWidth <= 190, shell.asideWidth);
   check('the page bar is 48px and the content fills the rest', shell.headerHeight === 48 && shell.contentHeight === shell.viewportHeight - 48, shell);
+  check(
+    'the page-bar drag region stops before the caption buttons',
+    shell.headerRight !== null && shell.controlsLeft !== null && shell.headerRight <= shell.controlsLeft,
+    { headerRight: shell.headerRight, controlsLeft: shell.controlsLeft },
+  );
   check('the page bar names the owner', shell.pageTitle === 'Today, Ada Lovelace', shell.pageTitle);
   check('Home fits without a scrollbar', shell.pageScroll <= 1 && shell.mainScroll <= 1, shell);
   check('the old editorial copy is gone', shell.oldCopy === false, shell.oldCopy);

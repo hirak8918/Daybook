@@ -7,7 +7,7 @@ notes in one library, a daily task list that carries unfinished work forward,
 then start a focus session on the Timer. Activity shows what the week actually
 looked like. One window, one JSON file, no account, no network code.
 
-**Latest release:** [v2.2.0](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
+**Latest release:** [v2.2.1](../../releases/latest) · Windows 10/11 x64 · [MIT licence](LICENSE)
 
 ![Daybook's Welcome screen: a cream page with the wordmark and the single question "What should we call you?" above a boxed name field](docs/screenshots/welcome.webp)
 
@@ -32,7 +32,7 @@ Grab the newest build from [**Releases**](../../releases/latest).
 
 | File | What it is |
 |---|---|
-| `Daybook-Setup-2.2.0.exe` | The installer. Per-user, no admin rights, choice of folder, desktop and Start Menu shortcuts, and a clean uninstaller that leaves your data alone. |
+| `Daybook-Setup-2.2.1.exe` | The installer. Per-user, no admin rights, choice of folder, desktop and Start Menu shortcuts, and a clean uninstaller that leaves your data alone. |
 
 **Requirements:** Windows 10 1809 or newer, or Windows 11, x64. 1000 × 600 is the
 smallest window Daybook draws itself in.
@@ -190,7 +190,7 @@ Everything works from `cmd.exe` too: every script is cross-platform Node tooling
 | `npm run dist` | Build, then package the NSIS installer |
 | `npm test` | 319 self-tests over the reducer, storage, statistics, notes, names and timer |
 | `npm run typecheck` | `tsc --noEmit` for the renderer and the main process |
-| `npm run verify` | 126 acceptance checks driven against the built app over CDP |
+| `npm run verify` | 127 acceptance checks driven against the built app over CDP |
 | `npm run inspect` | Attach to a running build over CDP and evaluate expressions |
 | `npm run assets` | Regenerate icons, copy fonts, and keep the archived source plates optimised |
 
@@ -205,6 +205,7 @@ one Windows x64 executable:
 
 | Tag | Asset | Built by |
 |---|---|---|
+| `v2.2.1` | `Daybook-Setup-2.2.1.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
 | `v2.2.0` | `Daybook-Setup-2.2.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
 | `v2.1.0` | `Daybook-Setup-2.1.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
 | `v2.0.0` | `Daybook-Setup-2.0.0.exe` | `npm run dist` → `nsis.artifactName: Daybook-Setup-${version}.${ext}` |
@@ -338,7 +339,7 @@ chart measuring itself, a dialog's exit animation, a screenshot — will not fin
 `npm run dist` produces one file:
 
 ```
-release\Daybook-Setup-2.2.0.exe
+release\Daybook-Setup-2.2.1.exe
 ```
 
 It is not code-signed, so the first run shows Windows SmartScreen: click
@@ -351,6 +352,10 @@ is a setting that does nothing. Add `electron-updater` back with a real publish
 target when there is something to update to.
 
 ## Changelog
+
+### 2.2.1
+
+- **Window controls on Home fixed.** The page bar's Windows drag region no longer sits underneath the caption buttons, so Minimize, Maximize/Restore and Close respond to the first physical click.
 
 ### 2.2.0
 

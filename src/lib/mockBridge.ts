@@ -122,7 +122,7 @@ export function createMockBridge(): DaybookBridge {
     data,
     dark: Boolean(darkMq?.matches),
     systemDark: Boolean(darkMq?.matches),
-    version: '2.2.0-preview',
+    version: '2.2.1-preview',
     platform: 'win32',
     isPackaged: false,
     maximized: false,
@@ -243,7 +243,7 @@ export function createMockBridge(): DaybookBridge {
       get: async () => snapshot(),
     },
     app: {
-      version: async () => '2.2.0-preview',
+      version: async () => '2.2.1-preview',
       openExternal: async (url: string) => {
         window.open(url, '_blank', 'noopener');
         return { ok: true };

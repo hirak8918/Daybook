@@ -301,7 +301,7 @@ export function SettingsView({ onNotice }: { onNotice: (notice: Omit<Notice, 'id
 
       <footer className="flex shrink-0 items-center justify-end">
         <p className="font-text text-micro text-ink-mute">
-          Daybook <span className="font-mono">{boot?.version ?? '2.2.0'}</span>
+          Daybook <span className="font-mono">{boot?.version ?? '2.2.1'}</span>
         </p>
       </footer>
 

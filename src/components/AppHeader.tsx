@@ -61,7 +61,10 @@ export function PageBar({ title }: { title: string }) {
   return (
     <header
       className="drag flex h-12 shrink-0 items-center justify-between gap-6 border-b border-rule bg-paper pl-5"
-      style={{ paddingRight: '8.75rem' }}
+      // Stop the drag region before the caption buttons. Padding would leave a
+      // full-width drag surface underneath them; Windows then takes the press
+      // before Chromium can deliver it to the buttons.
+      style={{ marginRight: '8.75rem' }}
     >
       <h1 className="truncate font-display text-[1.0625rem] font-semibold tracking-[-0.02em] text-ink">{title}</h1>
       <span className="hidden shrink-0 font-text text-micro text-ink-mute sm:block">{shortDay(toKey())}</span>
